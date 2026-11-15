@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: besked-server
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: node server.js
+    plan: free
+    envVars:
+      - key: ACCESS_CODE
+        sync: false

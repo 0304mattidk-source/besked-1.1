@@ -1,0 +1,83 @@
+// Start: ACCESS_CODE=min-kode node server.js
+const {WebSocketServer}=require('ws'),http=require('http'),fs=require('fs'),cr=require('crypto');
+const CODE=process.env.ACCESS_CODE||'1234',PORT=+process.env.PORT||8080,F='data.json';
+let db={users:{},rooms:{}};try{db=JSON.parse(fs.readFileSync(F,'utf8'))}catch{}
+const save=()=>fs.writeFile(F,JSON.stringify(db),()=>{});
+const id=()=>cr.randomBytes(6).toString('hex'),hash=(p,s)=>cr.scryptSync(p,s,32).toString('hex');
+const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
+const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
+const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
+const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
+const send=(w,o)=>w.readyState===1&&w.send(JSON.stringify(o));
+const to=(u,o)=>(conns.get(u)||[]).forEach(w=>send(w,o));
+const pub=u=>{const x=db.users[u];return{emoji:x.emoji,color:x.color,deco:x.deco,online:conns.has(u),img:x.img||''}};
+const roomsOf=u=>Object.values(db.rooms).filter(r=>r.members.includes(u));
+const cast=(r,o)=>r.members.forEach(m=>to(m,o));
+function push(u){const me=db.users[u];if(!me)return;
+  const rooms=roomsOf(u),people={};
+  new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl},friends:me.friends,incoming:me.incoming,rooms,people})}
+const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
+function accept(u,n){const a=db.users[u],b=db.users[n];
+  a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
+  if(!a.friends.includes(n))a.friends.push(n);if(!b.friends.includes(u))b.friends.push(u);
+  if(!Object.values(db.rooms).some(r=>r.type=='dm'&&r.members.includes(u)&&r.members.includes(n))){
+    const r={id:id(),type:'dm',members:[u,n],messages:[]};db.rooms[r.id]=r}
+  save();push(u);push(n)}
+function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
+  if(m.t=='friend'){const n=String(m.name).trim(),o=db.users[n];
+    if(!o||n==u)return note('Brugeren findes ikke');
+    if(me.friends.includes(n))return note('I er allerede venner');
+    if(me.incoming.includes(n))return accept(u,n);
+    if(!o.incoming.includes(u))o.incoming.push(u);save();push(n);note('Venneanmodning sendt')}
+  else if(m.t=='accept'&&me.incoming.includes(m.name))accept(u,m.name);
+  else if(m.t=='decline'){me.incoming=me.incoming.filter(x=>x!=m.name);save();push(u)}
+  else if(m.t=='group'){const ms=[...new Set((m.members||[]).filter(x=>me.friends.includes(x)))];
+    if(!ms.length)return note('Vælg mindst én ven');
+    const r={id:id(),type:'group',name:String(m.name||'Gruppe').trim().slice(0,30)||'Gruppe',members:[u,...ms],messages:[]};
+    db.rooms[r.id]=r;save();r.members.forEach(push)}
+  else if(m.t=='msg'){const r=db.rooms[m.room],text=String(m.text||'').trim().slice(0,2000),f=m.file;
+    const file=f&&typeof f.data=='string'&&f.data.startsWith('data:')&&f.data.length<2.2e6?{name:String(f.name||'fil').slice(0,80),data:f.data}:null;
+    if(!r||!r.members.includes(u)||(!text&&!file))return;
+    const ts=Date.now(),msg={id:id(),u,text,ts,exp:me.ttl?ts+me.ttl*60000:0,file,r:{}};
+    r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
+  else if(['edit','delmsg','react','typing','leave'].includes(m.t)){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
+    if(m.t=='typing')return r.members.forEach(x=>x!=u&&to(x,{t:'typing',room:r.id,u}));
+    if(m.t=='leave'){if(r.type!='group')return;const old=[...r.members];r.members=r.members.filter(x=>x!=u);
+      if(!r.members.length)delete db.rooms[r.id];save();return old.forEach(push)}
+    const g=r.messages.find(x=>x.id==m.id);if(!g)return;
+    const upd=()=>{save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r})};
+    if(m.t=='react'){if(!REACTS.includes(m.emoji))return;g.r=g.r||{};const a=g.r[m.emoji]||[];
+      g.r[m.emoji]=a.includes(u)?a.filter(x=>x!=u):[...a,u];if(!g.r[m.emoji].length)delete g.r[m.emoji];return upd()}
+    if(g.u!=u)return;
+    if(m.t=='edit'){const t=String(m.text||'').trim().slice(0,2000);if(!t)return;g.text=t;g.edited=1;upd()}
+    else{r.messages=r.messages.filter(x=>x!=g);save();cast(r,{t:'del',room:r.id,ids:[g.id]})}}
+  else if(m.t=='profile'){
+    if(typeof m.emoji=='string'&&m.emoji.trim())me.emoji=[...m.emoji.trim()].slice(0,2).join('');
+    if(typeof m.img=='string'){const i=m.img.trim();if(!i)me.img='';else if(/^https:\/\/[^\s"'<>]{4,480}$/.test(i))me.img=i;else note('Billed-URL skal starte med https://')}
+    if(/^#[0-9a-f]{6}$/i.test(m.color))me.color=m.color;
+    if(DECOS.includes(m.deco))me.deco=m.deco;
+    me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
+    save();pushAll(u)}
+  else if(m.t=='wipe'){roomsOf(u).forEach(r=>{r.messages=[];cast(r,{t:'wiped',room:r.id})});save()}}
+const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});srv.listen(PORT);
+wss.on('connection',(ws,req)=>{ws.ip=ip(req);
+  ws.on('message',raw=>{let m;try{m=JSON.parse(raw)}catch{return}
+    if(m.t=='auth'&&blocked(ws))return send(ws,{t:'err',e:'For mange forsøg. Vent 5 minutter.'});
+    if(m.t=='auth'){
+      if(m.signup&&m.code!==CODE)return wrong(ws,'Forkert invitationskode');
+      const n=String(m.name||'').trim(),p=String(m.pw||'');
+      if(!/^[\w.-]{2,20}$/.test(n)||p.length<4)return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
+      let u=db.users[n];
+      if(m.signup){if(u)return send(ws,{t:'err',e:'Brugernavnet er optaget'});
+        const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',ttl:0,friends:[],incoming:[]};save()}
+      else if(!u||u.h!==hash(p,u.salt))return wrong(ws,'Forkert brugernavn eller adgangskode');
+      ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
+    if(ws.u)handle(ws.u,m)});
+  ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);pushAll(u)})});
+// auto-sletning af udløbne beskeder
+setInterval(()=>{const now=Date.now();let ch=0;
+  for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>m.exp&&m.exp<=now).map(m=>m.id);
+    if(ids.length){r.messages=r.messages.filter(m=>!ids.includes(m.id));cast(r,{t:'del',room:r.id,ids});ch=1}}
+  if(ch)save()},5000);
+console.log(`Server kører på port ${PORT}. App-kode: ${CODE}`);
