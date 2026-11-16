@@ -1,5 +1,7 @@
 name: Byg Besked.exe
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   win:
     runs-on: windows-latest
@@ -11,3 +13,9 @@ jobs:
       - run: npm run dist
       - uses: actions/upload-artifact@v4
         with: { name: Besked-exe, path: dist/Besked.exe }
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: seneste
+          name: Seneste version
+          files: dist/Besked.exe
+          make_latest: true
