@@ -1,60 +1,70 @@
 <!doctype html><html lang="da"><meta charset="utf-8"><title>Besked</title>
 <style>
-:root{--h:var(--h);--g:#4e5058;--bg:#1e1f22;--p:#2b2d31;--s:#313338;--t:#dbdee1;--m:#949ba4;--a:#5865f2}
-body[data-theme=light]{--bg:#e3e5e8;--p:#f2f3f5;--s:#fff;--t:#2e3338;--m:#5c5e66;--h:#d8dadd;--g:#c4c9ce}
-body[data-theme=midnight]{--bg:#000;--p:#07070d;--s:#0d0d16;--h:#1c1c2b;--g:#2a2a3d}
-body.grad{background:var(--grad) fixed;--p:rgba(0,0,0,.3);--s:rgba(0,0,0,.15);--bg:rgba(0,0,0,.4);--h:rgba(255,255,255,.12);--g:rgba(255,255,255,.18);--t:#f2f3f5;--m:#c4c9d1;--bx:#26272b}
-*{box-sizing:border-box}body{margin:0;font:14px system-ui,sans-serif;background:var(--s);color:var(--t);height:100vh;overflow:hidden}
-input,button{font:inherit;color:inherit}
-input{background:var(--bg);border:0;border-radius:6px;padding:9px 11px;outline:0;width:100%}
-button{background:var(--a);border:0;border-radius:6px;padding:8px 14px;cursor:pointer}
-button.g{background:var(--g)}button.r{background:#da373c}
-.c{height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg)}.c>*{width:300px}
-#boot,#lock,#login{display:none}#corner{position:fixed;top:10px;right:10px;z-index:5;display:flex;gap:8px}
-.c>.spin{width:44px;height:44px;border:4px solid var(--h);border-top-color:var(--a);border-radius:50%;animation:sp .9s linear infinite}#app{display:none;height:100vh}
-#side{width:270px;background:var(--p);display:flex;flex-direction:column;flex:none}
+:root{--a:#5865f2;--bg:#16171a;--p:#1d1e22;--s:#232429;--t:#e6e7ea;--m:#8e9199;--h:rgba(255,255,255,.06);--g:#383a41;--bd:rgba(255,255,255,.07);--bx:#26272c}
+body[data-theme=light]{--bg:#e9ebee;--p:#f4f5f7;--s:#fff;--t:#1f2328;--m:#5f6672;--h:rgba(0,0,0,.06);--g:#d3d7dc;--bd:rgba(0,0,0,.09);--bx:#fff}
+body[data-theme=light] .i{filter:brightness(.72)}
+body[data-theme=midnight]{--bg:#000;--p:#07070c;--s:#0d0d14;--g:#262633;--bx:#11111a}
+body.grad{background:var(--grad) fixed;--p:rgba(0,0,0,.3);--s:rgba(0,0,0,.15);--bg:rgba(0,0,0,.4);--h:rgba(255,255,255,.1);--g:rgba(255,255,255,.16);--t:#f2f3f5;--m:#c4c9d1;--bx:#26272b}
+*{box-sizing:border-box}
+body{margin:0;font:14px "Segoe UI Variable","Segoe UI",system-ui,sans-serif;background:var(--s);color:var(--t);height:100vh;overflow:hidden}
+h2,h3,h4{margin:0}h3{margin:18px 0 8px}h4{margin:20px 0 8px;color:var(--m);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+small{color:var(--m);font-size:12px}.i{display:inline-flex;flex:none}.i svg{display:block}
+input{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px 12px;outline:0;width:100%;color:var(--t);font:inherit;transition:.15s}
+input:focus{border-color:var(--a)}input[type=checkbox]{width:auto}input[type=color]{width:46px;height:38px;padding:2px;flex:none}input[type=range]{padding:0;border:0;background:none;flex:1}
+button{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--a);color:#fff;border:0;border-radius:10px;padding:9px 16px;font:inherit;font-weight:600;cursor:pointer;transition:.15s}
+button:hover{filter:brightness(1.12)}button:active{transform:scale(.97)}button.g{background:var(--g);color:var(--t)}button.r{background:#da373c}
+.ib{background:transparent;color:var(--t);padding:8px;border-radius:10px}.ib:hover{background:var(--h)}
+select{appearance:none;background:var(--bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='3'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center;border:1px solid var(--bd);border-radius:10px;padding:8px 32px 8px 12px;color:var(--t);font:inherit;cursor:pointer;min-width:150px;outline:0}
+select:focus{border-color:var(--a)}select option{background:#26272c;color:#fff}
+.tg{position:relative;width:44px;height:24px;flex:none}.tg input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;z-index:1;cursor:pointer}
+.tg i{position:absolute;inset:0;border-radius:12px;background:var(--g);transition:.2s}.tg i::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:.2s}
+.tg input:checked+i{background:var(--a)}.tg input:checked+i::after{transform:translateX(20px)}
+.c{height:100vh;align-items:center;justify-content:center;flex-direction:column;gap:12px;background:radial-gradient(circle at 30% 15%,color-mix(in srgb,var(--a) 28%,transparent),transparent 55%),var(--bg)}.c>*{width:320px}
+.c h2{text-align:center;font-size:26px}.logo{display:flex;justify-content:center}.c>.spin{width:44px;height:44px;border:4px solid var(--g);border-top-color:var(--a);border-radius:50%;animation:sp .9s linear infinite}
+#boot,#lock,#login{display:none}#corner{position:fixed;top:12px;right:12px;z-index:5;display:flex;gap:8px}#corner button{padding:7px 12px;font-size:13px}
+#app{display:none;height:100vh}#side{width:310px;background:var(--p);display:flex;flex-direction:column;flex:none;border-right:1px solid var(--bd)}
 #main{flex:1;display:flex;flex-direction:column;min-width:0}
-.tabs{display:flex;gap:6px;padding:10px}.tabs button{flex:1}
-.list{flex:1;overflow:auto;padding:8px 14px;display:flex;flex-direction:column;gap:8px}
-.it{display:flex;align-items:center;gap:12px;padding:6px 8px;border-radius:6px;cursor:pointer}.it:hover,.sel{background:var(--h)}
-.it span{flex:1}.it u{width:8px;height:8px;border-radius:50%;background:#f23f42}
-.me{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg)}.me b{flex:1}
-.hd{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;font-weight:600;border-bottom:1px solid var(--bg)}
-#msgs{flex:1;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:14px}
-.m{display:flex;gap:14px}.tx{white-space:pre-wrap;word-break:break-word}
-.send{padding:14px 18px;display:flex;gap:8px}.ty{height:18px;padding:0 20px;color:var(--m);font-size:12px}
-.mb{flex:1;min-width:0;position:relative}.act{display:none;position:absolute;right:0;top:-8px;background:var(--bx,var(--p));border-radius:6px;padding:2px 8px;gap:8px;cursor:pointer}.m:hover .act{display:flex}
-.rx{display:flex;gap:6px;flex-wrap:wrap}.rx span{background:var(--p);border-radius:10px;padding:1px 8px;cursor:pointer}.rx span.on{outline:1px solid var(--a)}
-.im{max-width:320px;max-height:320px;border-radius:8px;margin-top:4px;display:block}.fl{color:#00a8fc}small{color:var(--m)}h3{margin:16px 0 6px}
-.pad{padding:20px;overflow:auto}.row{display:flex;gap:8px;align-items:center;margin:10px 0}
-.ov{z-index:10;position:fixed;inset:0;background:#000a;display:flex;align-items:center;justify-content:center}
-.box{background:var(--bx,var(--p));padding:20px;border-radius:10px;width:440px;max-height:90vh;overflow:auto}
-.pick{padding:12px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;gap:8px;align-items:center}.pick.on{background:var(--h)}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#111;padding:10px 16px;border-radius:8px}
-.err{color:#f23f42}
-/* avatar + dekorationer */
-.avw{position:relative;isolation:isolate;flex:none;width:38px;height:38px}
-.av{position:relative;overflow:hidden;width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
+.brand{display:flex;align-items:center;gap:10px;padding:16px 16px 8px;font-size:18px}.brand b{flex:1}
+.sch{position:relative;margin:6px 16px}.sch .i{position:absolute;left:11px;top:11px}.sch input{padding-left:36px}
+.seg{display:flex;gap:6px;margin:6px 16px 10px;background:var(--bg);padding:4px;border-radius:12px}.seg button{flex:1;background:transparent;color:var(--m);padding:7px}.seg button.on{background:var(--g);color:var(--t)}
+.bd{background:#f23f42;color:#fff;border-radius:9px;padding:0 6px;font-size:11px}
+.list{flex:1;overflow:auto;padding:4px 10px;display:flex;flex-direction:column;gap:2px}
+.it{display:flex;align-items:center;gap:12px;padding:9px 10px;border-radius:12px;cursor:pointer;transition:.12s}.it:hover{background:var(--h)}.it.sel{background:var(--g)}
+.tt{flex:1;min-width:0;display:flex;flex-direction:column}.tt small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.it u{width:9px;height:9px;border-radius:50%;background:var(--a)}
+.me{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg);border-top:1px solid var(--bd)}.em{padding:14px}
+.hd{display:flex;align-items:center;gap:14px;padding:12px 20px;border-bottom:1px solid var(--bd);background:var(--p)}
+#msgs{flex:1;overflow:auto;padding:12px 0;display:flex;flex-direction:column}
+.m{display:flex;gap:14px;padding:2px 22px;position:relative}.m:hover{background:var(--h)}.m.f{margin-top:14px}.sp{width:38px;flex:none}
+.mb{flex:1;min-width:0}.tx{white-space:pre-wrap;word-break:break-word;line-height:1.45}
+.act{display:none;position:absolute;right:18px;top:-14px;background:var(--bx);border:1px solid var(--bd);border-radius:10px;padding:4px 8px;gap:10px;align-items:center;cursor:pointer;box-shadow:0 4px 14px #0004}.m:hover .act{display:flex}
+.rx{display:flex;gap:6px;flex-wrap:wrap}.rx span{background:var(--p);border:1px solid var(--bd);border-radius:12px;padding:1px 9px;cursor:pointer}.rx span.on{border-color:var(--a);background:color-mix(in srgb,var(--a) 20%,transparent)}
+.im{max-width:340px;max-height:340px;border-radius:12px;margin-top:4px;display:block}.fl{display:inline-flex;gap:6px;align-items:center;color:#4da3ff;margin-top:2px}
+.ty{height:20px;padding:0 24px;color:var(--m);font-size:12px}.comp{display:flex;gap:8px;align-items:center;margin:0 18px 18px;background:var(--p);border:1px solid var(--bd);border-radius:14px;padding:6px}.comp input{border:0;background:transparent}
+.empty{margin:auto;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center;opacity:.9}
+.pad{padding:24px 28px;overflow:auto;max-width:720px}.card{background:var(--p);border:1px solid var(--bd);border-radius:14px;padding:14px;margin:8px 0;display:flex;flex-direction:column;gap:10px}.it.card{flex-direction:row}
+.row{display:flex;gap:8px;align-items:center}
+.ov{z-index:10;position:fixed;inset:0;background:#0009;display:flex;align-items:center;justify-content:center;animation:fi .15s}.box{background:var(--bx,var(--p));border:1px solid var(--bd);padding:20px;border-radius:16px;width:440px;max-height:90vh;overflow:auto;animation:pp .18s}.box.wide{width:600px}
+.sh{display:flex;justify-content:space-between;align-items:center}
+.sr{display:flex;align-items:center;gap:12px;padding:6px 0}.sr+.sr,.sr+.row{border-top:1px solid var(--bd)}.gr{padding:8px 0}
+.pk{flex-wrap:wrap}.pick{padding:10px;border-radius:10px;cursor:pointer;display:flex;flex-direction:column;gap:8px;align-items:center}.pick.on{background:var(--g)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 18px;border-radius:12px;z-index:20;animation:pp .2s}.err{color:#f23f42;text-align:center}
+.avw{position:relative;isolation:isolate;flex:none;width:38px;height:38px}.av{position:relative;overflow:hidden;width:100%;height:100%;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px}
 .av img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.avw i{position:absolute;right:-2px;bottom:-2px;width:12px;height:12px;border-radius:50%;background:#80848e;border:2px solid var(--p)}.avw i.on{background:#23a55a}
-.avw::before{content:'';position:absolute;inset:-4px;border-radius:50%;z-index:-1;display:none}
-.avw[class*=d-]:not(.d-none)::before{display:block}
-.d-toxic::before{background:#7cfc00;box-shadow:0 0 14px #7cfc00;animation:gl .8s infinite alternate}
-.d-sakura::before{background:linear-gradient(135deg,#ffc1d6,#ff6fa5)}
-.d-galaxy::before{background:conic-gradient(#7b2ff7,#00d4ff,#ff00c8,#7b2ff7);animation:sp 6s linear infinite reverse}
-.d-gold::before{background:linear-gradient(135deg,#fff3a0,#e0a800)}
-.d-rainbow::before{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);animation:sp 3s linear infinite}
-.d-neon::before{background:#0ff;box-shadow:0 0 14px #0ff;animation:gl 1s infinite alternate}
-.d-fire::before{background:radial-gradient(#ffd000,#ff4500);box-shadow:0 0 14px #f40;animation:gl .5s infinite alternate}
-.d-ice::before{background:linear-gradient(#e0f7ff,#4fc3f7);box-shadow:0 0 10px #8df}
-@keyframes sp{to{transform:rotate(1turn)}}@keyframes gl{to{opacity:.45}}
-@media(prefers-reduced-motion:reduce){.avw::before{animation:none!important}}
+.avw::before{content:'';position:absolute;inset:-4px;border-radius:50%;z-index:-1;display:none}.avw[class*=d-]:not(.d-none)::before{display:block}
+.d-gold::before{background:linear-gradient(135deg,#fff3a0,#e0a800)}.d-rainbow::before{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red);animation:sp 3s linear infinite}
+.d-neon::before{background:#0ff;box-shadow:0 0 14px #0ff;animation:gl 1s infinite alternate}.d-fire::before{background:radial-gradient(#ffd000,#ff4500);box-shadow:0 0 14px #f40;animation:gl .5s infinite alternate}
+.d-ice::before{background:linear-gradient(#e0f7ff,#4fc3f7);box-shadow:0 0 10px #8df}.d-toxic::before{background:#7cfc00;box-shadow:0 0 14px #7cfc00;animation:gl .8s infinite alternate}
+.d-sakura::before{background:linear-gradient(135deg,#ffc1d6,#ff6fa5)}.d-galaxy::before{background:conic-gradient(#7b2ff7,#00d4ff,#ff00c8,#7b2ff7);animation:sp 6s linear infinite reverse}
+@keyframes sp{to{transform:rotate(1turn)}}@keyframes gl{to{opacity:.45}}@keyframes fi{from{opacity:0}}@keyframes pp{from{opacity:0;transform:scale(.96)}}
+body.nomo *,body.nomo *::before{animation:none!important;transition:none!important}body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
 </style>
 <body>
-<div id=corner><button id=lo class=g onclick=logout()>Log ud</button><button class=g onclick=adv()>⚙ Avanceret</button></div>
+<div id=corner><button id=lo class=g onclick=logout()>Log ud</button><button id=av2 class=g onclick=adv()></button></div>
 <div id=boot class=c><div class=spin></div><div id=bt style="text-align:center">Forbinder…</div></div>
-<div id=lock class=c><h2>🔒 Besked</h2><div id=lu style="font-size:18px;text-align:center"></div><input id=code type=password placeholder="Kode" onkeydown="event.key=='Enter'&&unlock()"><button onclick=unlock()>Åbn</button><small class=err></small></div>
-<div id=login class=c><h2>Besked</h2><input id=nm placeholder="Brugernavn"><input id=pw type=password placeholder="Adgangskode" onkeydown="event.key=='Enter'&&login(0)"><input id=ic type=password placeholder="Invitationskode (kun ved ny konto)"><div class=row><button onclick=login(0)>Log ind</button><button class=g onclick=login(1)>Opret konto</button></div><small class=err></small></div>
+<div id=lock class=c><div class=logo></div><h2>Besked</h2><div id=lu style="font-size:18px;text-align:center"></div><input id=code type=password placeholder="Kode" onkeydown="event.key=='Enter'&&unlock()"><button onclick=unlock()>Åbn</button><small class=err></small></div>
+<div id=login class=c><div class=logo></div><h2>Besked</h2><input id=nm placeholder="Brugernavn"><input id=pw type=password placeholder="Adgangskode" onkeydown="event.key=='Enter'&&login(0)"><input id=ic type=password placeholder="Invitationskode (kun ved ny konto)"><div class=row><button onclick=login(0)>Log ind</button><button class=g onclick=login(1)>Opret konto</button></div><small class=err></small></div>
 <div id=app><div id=side></div><div id=main></div></div><div id=modal></div>
+<script src="icons.js"></script>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
 let typers={},lt=0;const RE=['👍','❤️','😂','😮','😢','🔥'];document.body.dataset.theme=localStorage.th||'';
@@ -68,36 +78,36 @@ const tx=o=>ws&&ws.readyState==1&&ws.send(JSON.stringify(o));
 const rname=r=>r.type=='group'?r.name:r.members.find(x=>x!=S.me.name);
 const room=id=>S.rooms.find(r=>r.id==id);
 const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)};
-const DEFAULT_SERVER='https://besked-server.onrender.com'; // skriv evt. din Render-adresse her, fx 'besked-server.onrender.com'
+const DEFAULT_SERVER=''; // skriv evt. din Render-adresse her, fx 'besked-server.onrender.com'
 const norm=u=>{u=(u||'').trim();return u?u.replace(/^http/,'ws').replace(/^(?!wss?:)/,'wss://'):''};
-let srv=norm(localStorage.srv2||DEFAULT_SERVER),booting=0;
+let srv=norm(localStorage.srv2||DEFAULT_SERVER),booting=0,auto=0;
 function dial(url){return new Promise((ok,no)=>{let w;try{w=new WebSocket(url)}catch{return no()}
   const t=setTimeout(()=>{w.onclose=w.onerror=w.onopen=null;w.close();no()},20000);
   w.onopen=()=>{clearTimeout(t);ws=w;w.onmessage=e=>on(JSON.parse(e.data));w.onclose=()=>{S=null;boot()};ok()};
   w.onerror=()=>{clearTimeout(t);no()}})}
-async function boot(){if(booting)return;booting=1;cur=null;closeM();show('boot');
+async function boot(skip){if(booting)return;booting=1;cur=null;closeM();show('boot');
   if(!srv){booting=0;$('#bt').textContent='Vælg en server under Avanceret';return adv()}
   const bt=$('#bt');bt.textContent='Forbinder…';const t=setTimeout(()=>bt.textContent='Server starter… (kan tage op til et minut)',2500);
   for(;;){try{await dial(srv);break}catch{await new Promise(r=>setTimeout(r,2500))}}
   clearTimeout(t);booting=0;const u=localStorage.user;
-  if(u){$('#lu').textContent=u;show('lock');$('#code').focus()}else{show('login');$('#nm').focus()}}
+  if(u&&localStorage.tok&&!skip){auto=1;bt.textContent='Logger ind…';tx({t:'auth',name:u,token:localStorage.tok})}
+  else if(u){$('#lu').textContent=u;show('lock');$('#code').focus()}else{show('login');$('#nm').focus()}}
 const send1=o=>{if(!ws||ws.readyState!=1)return boot();err();tx(o)};
 const unlock=()=>send1({t:'auth',name:localStorage.user,pw:$('#code').value});
 const login=su=>send1({t:'auth',signup:su,code:$('#ic').value,name:$('#nm').value.trim(),pw:$('#pw').value});
-function lock(e){S=null;closeM();if(ws){ws.onclose=null;ws.close()}$('#code').value=$('#pw').value='';err(e);boot()}
-const logout=()=>{delete localStorage.user;lock()};
+function lock(e){S=null;closeM();if(ws){ws.onclose=null;ws.close()}$('#code').value=$('#pw').value='';err(e);boot(1)}
+const logout=()=>{if(S&&localStorage.tok)tx({t:'forget',token:localStorage.tok});delete localStorage.tok;delete localStorage.user;lock()};
 function adv(){modal(`<h3>Avancerede indstillinger</h3><small>Server-adresse</small><input id=sv value="${esc(srv)}" placeholder="fx besked-server.onrender.com"><div class=row><button class=g onclick=closeM()>Annullér</button><button onclick=saveAdv()>Gem og forbind</button></div>`)}
 const saveAdv=()=>{srv=norm($('#sv').value);localStorage.srv2=srv;closeM();if(ws){ws.onclose=null;ws.close()}S=null;boot()};
 const hx=c=>/^#[0-9a-f]{6}$/i.test(c||'');
-function applyBg(){const a=localStorage.g1,b=localStorage.g2,on=hx(a)&&hx(b);document.body.classList.toggle('grad',on);document.body.style.setProperty('--grad',on?`linear-gradient(${+localStorage.ga||135}deg,${a},${b})`:'none')}
-const setBg=()=>{localStorage.g1=$('#g1').value;localStorage.g2=$('#g2').value;localStorage.ga=$('#ga').value;applyBg()};
-const preset=(a,b)=>{if(!a){delete localStorage.g1;delete localStorage.g2;applyBg();return}$('#g1').value=a;$('#g2').value=b;setBg()};
+function applyBg(){const a=localStorage.g1,b=localStorage.g2,on=hx(a)&&hx(b)&&localStorage.gon=='1';document.body.classList.toggle('grad',on);document.body.style.setProperty('--grad',on?`linear-gradient(${+localStorage.ga||135}deg,${a},${b})`:'none')}
 function on(m){
-  if(m.t=='err')err(m.e);
+  if(m.t=='err'){err(m.e);if(auto){auto=0;delete localStorage.tok;$('#lu').textContent=localStorage.user||'';show(localStorage.user?'lock':'login')}}
   else if(m.t=='note')toast(m.e);
-  else if(m.t=='state'){S=m;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
+  else if(m.t=='token'){localStorage.tok=m.token;toast('Auto-login er slået til')}
+  else if(m.t=='state'){S=m;auto=0;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
   else if(!S)return;
-  else if(m.t=='msg'){const r=room(m.room);if(!r)return;r.messages.push(m.m);if(m.m.u!=S.me.name&&!document.hasFocus())new Notification(m.m.u,{body:m.m.text||'📎 fil'});if(cur==r.id&&tab=='chats')msgs();else{unread[r.id]=1;side()}}
+  else if(m.t=='msg'){const r=room(m.room);if(!r)return;r.messages.push(m.m);if(m.m.u!=S.me.name){if(pf().sound!==0)beep();if(pf().notif!==0&&!document.hasFocus())new Notification(m.m.u,{body:m.m.text||'Fil'})}if(cur==r.id&&tab=='chats')msgs();else unread[r.id]=1;list()}
   else if(m.t=='typing'){(typers[m.room]=typers[m.room]||{})[m.u]=Date.now()+3000;showTy()}
   else if(m.t=='upd'){const r=room(m.room),g=r&&r.messages.find(x=>x.id==m.id);if(g){g.text=m.text;g.edited=m.edited;g.r=m.r;cur==r.id&&msgs()}}
   else if(m.t=='del'){const r=room(m.room);if(r){r.messages=r.messages.filter(x=>!m.ids.includes(x.id));cur==r.id&&msgs()}}
@@ -106,44 +116,81 @@ const render=()=>{side();main()};
 const openR=id=>{if(cur!=id&&$('#in'))$('#in').value='';cur=id;tab='chats';delete unread[id];render()};
 const dm=n=>{const r=S.rooms.find(r=>r.type=='dm'&&r.members.includes(n));r&&openR(r.id)};
 const addF=()=>{tx({t:'friend',name:$('#fn').value});$('#fn').value=''};
-function side(){$('#side').innerHTML=`<div class=tabs><button class="${tab=='chats'?'':'g'}" onclick="tab='chats';render()">Chats</button><button class="${tab=='friends'?'':'g'}" onclick="tab='friends';render()">Venner${S.incoming.length?' ('+S.incoming.length+')':''}</button></div>
-<div class=list>${S.rooms.map(r=>{const g=r.type=='group',p=g?{emoji:'👥',color:'#4e5058',deco:'none'}:P(rname(r));
-return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''}" onclick="openR('${r.id}')">${av(p,!g)}<span>${esc(rname(r))}</span>${unread[r.id]?'<u></u>':''}</div>`}).join('')}<button class=g onclick=newGroup()>+ Ny gruppe</button></div>
-<div class=me>${av(S.me,1)}<b>${esc(S.me.name)}</b><button class=g onclick=settings()>⚙</button><button class=g onclick=logout() title="Log ud">⏻</button></div>`}
+let ik=0,q='';
+const ico=(n,z=20)=>IC[n]?`<span class=i>${IC[n].replace('width="24" height="24"',`width="${z}" height="${z}"`).split(`-ki-${n}-soft`).join(`-ki-${n}-${++ik}`)}</span>`:'';
+const pf=()=>{try{return JSON.parse(localStorage.prefs||'{}')}catch{return{}}};
+function applyPf(){const p=pf(),b=document.body;b.dataset.theme=p.theme||'';b.classList.toggle('compact',!!p.compact);b.classList.toggle('nomo',p.motion===0);b.style.fontSize=({s:'13px',l:'15.5px'})[p.font]||'14px';b.style.setProperty('--a',hx(p.accent)?p.accent:'#5865f2')}
+const setPf=(k,v)=>{const p=pf();p[k]=v;localStorage.prefs=JSON.stringify(p);applyPf()};
+const beep=()=>{try{const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();o.connect(g);g.connect(c.destination);o.frequency.value=880;g.gain.setValueAtTime(.08,c.currentTime);g.gain.exponentialRampToValueAtTime(.001,c.currentTime+.25);o.start();o.stop(c.currentTime+.25)}catch{}};
+const T=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+const rinfo=r=>{const g=r.type=='group';return{g,n:rname(r),p:g?{emoji:'👥',color:'#4e5058',deco:'none'}:P(rname(r))}};
+const prev=r=>{const m=r.messages.at(-1);return m?(m.u==S.me.name?'Du: ':'')+(m.text||'Fil'):'Ingen beskeder endnu'};
+const rooms=()=>S.rooms.filter(r=>rname(r).toLowerCase().includes(q.toLowerCase())).map(r=>{const i=rinfo(r),m=r.messages.at(-1);
+return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''}" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?'<u></u>':m?`<small>${T(m.ts)}</small>`:''}</div>`}).join('')||'<small class=em>Ingen samtaler</small>';
+const list=()=>{const e=$('#rl');if(e)e.innerHTML=rooms()};
+function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Besked</b><button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
+<div class=sch>${ico('search',16)}<input placeholder="Søg i samtaler" value="${esc(q)}" oninput="q=this.value;list()"></div>
+<div class=seg><button class="${tab=='chats'?'on':''}" onclick="tab='chats';render()">${ico('message-circle',18)}Chats</button><button class="${tab=='friends'?'on':''}" onclick="tab='friends';render()">${ico('users',18)}Venner${S.incoming.length?`<span class=bd>${S.incoming.length}</span>`:''}</button></div>
+<div class=list id=rl>${rooms()}</div>
+<div class=me>${av(S.me,1)}<div class=tt><b>${esc(S.me.name)}</b><small>Online</small></div><button class=ib title="Indstillinger" onclick=settings()>${ico('settings',20)}</button><button class=ib title="Log ud" onclick=logout()>${ico('log-out',20)}</button></div>`}
 function main(){const el=$('#main'),d=$('#in')?$('#in').value:'';
-  if(tab=='friends'){el.innerHTML=`<div class=pad><h3>Tilføj ven</h3><div class=row><input id=fn placeholder="Brugernavn" onkeydown="event.key=='Enter'&&addF()"><button onclick=addF()>Send</button></div>
-${S.incoming.length?'<h3>Anmodninger</h3>':''}${S.incoming.map(n=>`<div class=it>${av(P(n))}<span>${esc(n)}</span><button onclick="tx({t:'accept',name:'${esc(n)}'})">Acceptér</button><button class=r onclick="tx({t:'decline',name:'${esc(n)}'})">Afvis</button></div>`).join('')}
-<h3>Venner</h3>${S.friends.map(n=>`<div class=it onclick="dm('${esc(n)}')">${av(P(n),1)}<span>${esc(n)}</span><small>${P(n).online?'Online':'Offline'}</small></div>`).join('')||'<small>Du har ingen venner endnu. Send en anmodning ovenfor.</small>'}</div>`;return}
-  const r=cur&&room(cur);
-  if(!r){el.innerHTML='<div class=pad><small>Vælg en chat eller tilføj en ven.</small></div>';return}
-  el.innerHTML=`<div class=hd><span>${esc(rname(r))}${r.type=='group'?` <small>${r.members.map(esc).join(', ')}</small>`:''}</span>${r.type=='group'?'<button class=g onclick=leave()>Forlad gruppe</button>':''}</div><div id=msgs></div><div class=ty id=ty></div><div class=send><button class=g onclick="$('#fi').click()">📎</button><input id=in placeholder="Skriv en besked" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter'&&this.value.trim()){tx({t:'msg',room:cur,text:this.value});this.value=''}"><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
-  $('#in').value=d;$('#in').focus();msgs()}
-function msgs(){const r=room(cur),b=$('#msgs');if(!r||!b)return;const nb=b.scrollHeight-b.scrollTop-b.clientHeight<80;
-  b.innerHTML=r.messages.map(m=>{const f=m.file,img=f&&/^data:image\/(png|jpe?g|gif|webp);/.test(f.data);
-  return`<div class=m>${av(P(m.u))}<div class=mb><b>${esc(m.u)}</b> <small>${new Date(m.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}${m.exp?' ⏱':''}${m.edited?' (redigeret)':''}</small>
-${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${f?img?`<img class=im src="${esc(f.data)}">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">📎 ${esc(f.name)}</a>`:''}
+if(tab=='friends'){el.innerHTML=`<div class=pad><h2>Venner</h2><div class=card><b>Tilføj ven</b><div class=row><input id=fn placeholder="Brugernavn" onkeydown="event.key=='Enter'&&addF()"><button onclick=addF()>${ico('circle-plus',18)}Send</button></div></div>
+${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it card">${av(P(n))}<div class=tt><b>${esc(n)}</b><small>vil være din ven</small></div><button onclick="tx({t:'accept',name:'${esc(n)}'})">${ico('circle-check',18)}Acceptér</button><button class=g onclick="tx({t:'decline',name:'${esc(n)}'})">Afvis</button></div>`).join(''):''}
+<h3>Dine venner (${S.friends.length})</h3>${S.friends.map(n=>`<div class="it card" onclick="dm('${esc(n)}')">${av(P(n),1)}<div class=tt><b>${esc(n)}</b><small>${P(n).online?'Online':'Offline'}</small></div>${ico('send',18)}</div>`).join('')||'<small>Ingen venner endnu</small>'}</div>`;return}
+const r=cur&&room(cur);
+if(!r){el.innerHTML=`<div class=empty>${ico('message-circle',96)}<h2>Vælg en samtale</h2><small>Eller tilføj en ven under Venner</small></div>`;return}
+const i=rinfo(r);
+el.innerHTML=`<div class=hd>${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${i.g?`<button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div>
+<div class=comp><button class=ib title="Vedhæft fil" onclick="$('#fi').click()">${ico('paperclip',22)}</button><input id=in placeholder="Skriv en besked til ${esc(i.n)}" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter'&&this.value.trim()){tx({t:'msg',room:cur,text:this.value});this.value=''}"><button title="Send" onclick="const e=$('#in');if(e.value.trim()){tx({t:'msg',room:cur,text:e.value});e.value=''}">${ico('send',20)}</button><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
+$('#in').value=d;$('#in').focus();msgs()}
+function msgs(){const r=room(cur),b=$('#msgs');if(!r||!b)return;const nb=b.scrollHeight-b.scrollTop-b.clientHeight<80;let pu='',pt=0;
+b.innerHTML=r.messages.map(m=>{const f=m.file,img=f&&/^data:image\/(png|jpe?g|gif|webp);/.test(f.data),first=m.u!=pu||m.ts-pt>3e5;pu=m.u;pt=m.ts;
+return`<div class="m ${first?'f':''}">${first?av(P(m.u)):'<div class=sp></div>'}<div class=mb>${first?`<b>${esc(m.u)}</b> <small>${T(m.ts)}</small>`:''}${m.exp?`<small title="Slettes automatisk"> ${ico('clock',14)}</small>`:''}${m.edited?'<small> (redigeret)</small>':''}
+${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${f?img?`<img class=im src="${esc(f.data)}">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">${ico('paperclip',16)}${esc(f.name)}</a>`:''}
 <div class=rx>${Object.entries(m.r||{}).map(([e,a])=>`<span class="${a.includes(S.me.name)?'on':''}" onclick="react('${m.id}','${e}')">${esc(e)} ${a.length}</span>`).join('')}</div>
-<div class=act>${RE.map(e=>`<span onclick="react('${m.id}','${e}')">${e}</span>`).join('')}${m.u==S.me.name?`<span onclick="editM('${m.id}')">✎</span><span onclick="tx({t:'delmsg',room:cur,id:'${m.id}'})">🗑</span>`:''}</div></div></div>`}).join('');
-  if(nb)b.scrollTop=b.scrollHeight}
+<div class=act>${RE.map(e=>`<span onclick="react('${m.id}','${e}')">${e}</span>`).join('')}${m.u==S.me.name?`<span title="Rediger" onclick="editM('${m.id}')">${ico('pencil',16)}</span><span title="Slet" onclick="tx({t:'delmsg',room:cur,id:'${m.id}'})">${ico('trash',16)}</span>`:''}</div></div></div>`}).join('');
+if(nb)b.scrollTop=b.scrollHeight}
 const react=(id,e)=>tx({t:'react',room:cur,id,emoji:e}),typ=()=>{if(Date.now()-lt>2000){lt=Date.now();tx({t:'typing',room:cur})}};
 const showTy=()=>{const e=$('#ty');if(!e)return;const n=Object.entries(typers[cur]||{}).filter(x=>x[1]>Date.now()).map(x=>x[0]);e.textContent=n.length?n.join(', ')+' skriver…':''};
 const setTheme=t=>{document.body.dataset.theme=localStorage.th=t},leave=()=>{if(confirm('Forlad gruppen?')){tx({t:'leave',room:cur});cur=null}};
 function attach(f){if(!f)return;if(f.size>1.5e6)return toast('Filen er for stor (maks 1,5 MB)');const rd=new FileReader();rd.onload=()=>tx({t:'msg',room:cur,text:'',file:{name:f.name,data:rd.result}});rd.readAsDataURL(f)}
 function editM(id){const m=room(cur).messages.find(x=>x.id==id);modal(`<h3>Rediger besked</h3><input id=ed value="${esc(m.text)}" onkeydown="event.key=='Enter'&&saveE('${id}')"><div class=row><button class=g onclick=closeM()>Annullér</button><button onclick="saveE('${id}')">Gem</button></div>`);$('#ed').focus()}
 const saveE=id=>{tx({t:'edit',room:cur,id,text:$('#ed').value});closeM()};
-const modal=h=>{$('#modal').innerHTML=`<div class=ov onclick="if(event.target==this)closeM()"><div class=box>${h}</div></div>`},closeM=()=>$('#modal').innerHTML='';
+const modal=(h,w)=>{$('#modal').innerHTML=`<div class=ov onclick="if(event.target==this)closeM()"><div class="box ${w||''}">${h}</div></div>`},closeM=()=>$('#modal').innerHTML='';
 function newGroup(){modal(`<h3>Ny gruppe</h3><input id=gn placeholder="Gruppenavn">${S.friends.map(n=>`<label class=it><input type=checkbox class=gm value="${esc(n)}" style="width:auto"> ${esc(n)}</label>`).join('')||'<small>Tilføj venner først.</small>'}<div class=row><button class=g onclick=closeM()>Annullér</button><button onclick="tx({t:'group',name:$('#gn').value,members:[...document.querySelectorAll('.gm:checked')].map(x=>x.value)});closeM()">Opret</button></div>`)}
-function settings(){sel=S.me.deco;modal(`<h3>Profil</h3><div class=row><input id=em value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co type=color value="${esc(S.me.color)}" style="width:60px;padding:2px"></div><input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}">
-<h3>Avatar-dekoration</h3><div class=row style="flex-wrap:wrap">${Object.entries(DECOS).map(([k,v])=>`<div class=pick data-k=${k} onclick="sel='${k}';markSel()">${av({img:S.me.img,emoji:S.me.emoji,color:S.me.color,deco:k})}<small>${v}</small></div>`).join('')}</div>
-<h3>Baggrund</h3><div class=row><input type=color id=g1 value="${localStorage.g1||'#5865f2'}" oninput=setBg() style="width:60px;padding:2px"><input type=color id=g2 value="${localStorage.g2||'#eb459e'}" oninput=setBg() style="width:60px;padding:2px"><input type=range id=ga min=0 max=360 value="${localStorage.ga||135}" oninput=setBg() style="flex:1;padding:0"></div>
-<div class=row style="flex-wrap:wrap"><button class=g onclick="preset('#ff7e5f','#6a3093')">Solnedgang</button><button class=g onclick="preset('#0f2027','#2c7a7b')">Hav</button><button class=g onclick="preset('#42275a','#734b6d')">Natskygge</button><button class=g onclick="preset('')">Ingen</button></div>
-<h3>Tema</h3><div class=row><button class=g onclick="setTheme('')">Mørk</button><button class=g onclick="setTheme('midnight')">Midnat</button><button class=g onclick="setTheme('light')">Lys</button></div>
-<h3>Auto-slet mine beskeder efter (minutter, 0 = fra)</h3><input id=tt type=number min=0 max=1440 value="${S.me.ttl}">
-<p><small>Ctrl+Alt+Shift+X sletter ALLE dine chats (også hos de andre) og låser appen. Ctrl+L låser appen.</small></p>
-<div class=row style="flex-wrap:wrap"><button class=r onclick="if(confirm('Slet alle chats for alle?'))tx({t:'wipe'})">Slet alle chats</button><button class=g onclick=lock()>Lås</button><button class=g onclick="closeM();adv()">Server</button><button class=g onclick=logout()>Log ud</button><button onclick=saveS()>Gem</button></div>`);markSel()}
+const SEL=(o,c,f)=>`<select onchange="${f}(this.value)">${o.map(([v,t])=>`<option value="${v}"${v==c?' selected':''}>${t}</option>`).join('')}</select>`;
+const TOG=(on,f,id)=>`<label class=tg><input ${id?`id=${id} `:''}type=checkbox${on?' checked':''} onchange="${f}(this.checked)"><i></i></label>`;
+const ROW=(ic,t,d,c)=>`<div class=sr>${ic?ico(ic,22):''}<div class=tt><b>${t}</b>${d?`<small>${d}</small>`:''}</div>${c}</div>`;
+function settings(){const p=pf(),gon=localStorage.gon=='1';sel=S.me.deco;modal(`<div class=sh><h2>Indstillinger</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
+<h4>Profil</h4><div class=card><div class=row>${av(S.me,0)}<input id=em value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co type=color value="${esc(S.me.color)}"></div>
+<input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><small>Avatar-dekoration</small>
+<div class="row pk">${Object.entries(DECOS).map(([k,v])=>`<div class=pick data-k=${k} onclick="sel='${k}';markSel()">${av({img:S.me.img,emoji:S.me.emoji,color:S.me.color,deco:k})}<small>${v}</small></div>`).join('')}</div><button onclick=saveS()>Gem profil</button></div>
+<h4>Udseende</h4><div class=card>
+${ROW('palette','Tema','',SEL([['','Mørk'],['midnight','Midnat'],['light','Lys']],p.theme||'','sTheme'))}
+${ROW('palette','Accentfarve','',SEL([['#5865f2','Blå'],['#8b5cf6','Lilla'],['#10b981','Grøn'],['#ef4444','Rød'],['#f59e0b','Orange'],['#ec4899','Pink']],p.accent||'#5865f2','sAcc'))}
+${ROW('sliders','Skriftstørrelse','',SEL([['s','Lille'],['n','Normal'],['l','Stor']],p.font||'n','sFont'))}
+${ROW('sliders','Kompakt visning','Tættere beskeder',TOG(p.compact,'tCompact'))}
+${ROW('sliders','Animationer','Ringe, overgange og effekter',TOG(p.motion!==0,'tMotion'))}
+${ROW('image','Gradient-baggrund','Farver bag appens paneler',TOG(gon,'tGon','gt'))}
+<div class="row gr"><input type=color id=g1 value="${localStorage.g1||'#5865f2'}" oninput=setBg()><input type=color id=g2 value="${localStorage.g2||'#eb459e'}" oninput=setBg()><input type=range id=ga min=0 max=360 value="${localStorage.ga||135}" oninput=setBg()>${SEL([['','Egne farver'],['sun','Solnedgang'],['sea','Hav'],['night','Natskygge']],'','sPre')}</div></div>
+<h4>Beskeder</h4><div class=card>
+${ROW('bell','Notifikationer','Når appen ikke er i fokus',TOG(p.notif!==0,'tNotif'))}
+${ROW('bell','Notifikationslyd','',TOG(p.sound!==0,'tSound'))}
+${ROW('clock','Auto-slet mine beskeder','Gælder nye beskeder',SEL([['0','Fra'],['1','Efter 1 minut'],['5','Efter 5 minutter'],['30','Efter 30 minutter'],['60','Efter 1 time'],['360','Efter 6 timer'],['1440','Efter 24 timer']],String(S.me.ttl),'sTtl'))}</div>
+<h4>Sikkerhed og konto</h4><div class=card>
+${ROW('key','Log automatisk ind','Åbn appen uden kode på denne pc. Alle med adgang til din pc kan så åbne den.',TOG(!!localStorage.tok,'tAuto'))}
+${ROW('lock','Lås appen nu','Genvej: Ctrl+L',`<button class=g onclick=lock()>Lås</button>`)}
+${ROW('trash','Slet alle chats','Sletter hos alle. Genvej: Ctrl+Alt+Shift+X',`<button class=r onclick="if(confirm('Slet alle chats for alle?'))tx({t:'wipe'})">Slet</button>`)}
+${ROW('server','Server',esc(srv),`<button class=g onclick="closeM();adv()">Skift</button>`)}
+${ROW('log-out','Log ud','',`<button class=g onclick=logout()>Log ud</button>`)}</div>`,'wide');markSel()}
 const markSel=()=>document.querySelectorAll('.pick').forEach(x=>x.classList.toggle('on',x.dataset.k==sel));
-const saveS=()=>{tx({t:'profile',img:$('#pi').value,emoji:$('#em').value,color:$('#co').value,deco:sel,ttl:$('#tt').value});closeM()};
-applyBg();boot();
+const saveS=()=>{tx({t:'profile',img:$('#pi').value,emoji:$('#em').value,color:$('#co').value,deco:sel});toast('Profil gemt')};
+const sTheme=v=>setPf('theme',v),sAcc=v=>setPf('accent',v),sFont=v=>setPf('font',v),tCompact=v=>setPf('compact',v?1:0),tMotion=v=>setPf('motion',v?1:0),tNotif=v=>setPf('notif',v?1:0),tSound=v=>setPf('sound',v?1:0),sTtl=v=>tx({t:'profile',ttl:+v});
+const tGon=v=>{if(v&&!hx(localStorage.g1)){localStorage.g1='#5865f2';localStorage.g2='#eb459e'}localStorage.gon=v?'1':'0';applyBg()};
+const setBg=()=>{localStorage.g1=$('#g1').value;localStorage.g2=$('#g2').value;localStorage.ga=$('#ga').value;localStorage.gon='1';$('#gt').checked=true;applyBg()};
+const sPre=v=>{const m={sun:['#ff7e5f','#6a3093'],sea:['#0f2027','#2c7a7b'],night:['#42275a','#734b6d']}[v];if(m){$('#g1').value=m[0];$('#g2').value=m[1];setBg()}};
+const tAuto=v=>{if(v)tx({t:'remember'});else{if(localStorage.tok)tx({t:'forget',token:localStorage.tok});delete localStorage.tok}};
+applyPf();applyBg();document.querySelectorAll('.logo').forEach(e=>e.innerHTML=ico('message-circle',64));$('#lo').innerHTML=ico('log-out',16)+'Log ud';$('#av2').innerHTML=ico('sliders',16)+'Avanceret';boot();
 setInterval(()=>{if(!S)return;const n=Date.now()+off;let c=0;
   S.rooms.forEach(r=>{const l=r.messages.length;r.messages=r.messages.filter(m=>!m.exp||m.exp>n);if(r.messages.length!=l&&r.id==cur)c=1});c&&msgs();showTy()},1000);
 addEventListener('keydown',e=>{if(e.ctrlKey&&e.key=='l'){e.preventDefault();lock()}});

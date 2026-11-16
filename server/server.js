@@ -5,6 +5,7 @@ let db={users:{},rooms:{}};try{db=JSON.parse(fs.readFileSync(F,'utf8'))}catch{}
 const save=()=>fs.writeFile(F,JSON.stringify(db),()=>{});
 const id=()=>cr.randomBytes(6).toString('hex'),hash=(p,s)=>cr.scryptSync(p,s,32).toString('hex');
 const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
+const sha=t=>cr.createHash('sha256').update(String(t)).digest('hex');
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
 const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
@@ -24,7 +25,7 @@ function accept(u,n){const a=db.users[u],b=db.users[n];
   if(!Object.values(db.rooms).some(r=>r.type=='dm'&&r.members.includes(u)&&r.members.includes(n))){
     const r={id:id(),type:'dm',members:[u,n],messages:[]};db.rooms[r.id]=r}
   save();push(u);push(n)}
-function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
+function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   if(m.t=='friend'){const n=String(m.name).trim(),o=db.users[n];
     if(!o||n==u)return note('Brugeren findes ikke');
     if(me.friends.includes(n))return note('I er allerede venner');
@@ -57,8 +58,10 @@ function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(typeof m.img=='string'){const i=m.img.trim();if(!i)me.img='';else if(/^https:\/\/[^\s"'<>]{4,480}$/.test(i))me.img=i;else note('Billed-URL skal starte med https://')}
     if(/^#[0-9a-f]{6}$/i.test(m.color))me.color=m.color;
     if(DECOS.includes(m.deco))me.deco=m.deco;
-    me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
+    if(m.ttl!==undefined)me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
     save();pushAll(u)}
+  else if(m.t=='remember'){const t=id()+id()+id();me.tokens=[...(me.tokens||[]),sha(t)].slice(-5);save();send(ws,{t:'token',token:t})}
+  else if(m.t=='forget'){me.tokens=(me.tokens||[]).filter(x=>x!=sha(m.token));save()}
   else if(m.t=='wipe'){roomsOf(u).forEach(r=>{r.messages=[];cast(r,{t:'wiped',room:r.id})});save()}}
 const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});srv.listen(PORT);
 wss.on('connection',(ws,req)=>{ws.ip=ip(req);
@@ -67,13 +70,13 @@ wss.on('connection',(ws,req)=>{ws.ip=ip(req);
     if(m.t=='auth'){
       if(m.signup&&m.code!==CODE)return wrong(ws,'Forkert invitationskode');
       const n=String(m.name||'').trim(),p=String(m.pw||'');
-      if(!/^[\w.-]{2,20}$/.test(n)||p.length<4)return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
+      if(!/^[\w.-]{2,20}$/.test(n)||(!m.token&&p.length<4))return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
       let u=db.users[n];
       if(m.signup){if(u)return send(ws,{t:'err',e:'Brugernavnet er optaget'});
         const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',ttl:0,friends:[],incoming:[]};save()}
-      else if(!u||u.h!==hash(p,u.salt))return wrong(ws,'Forkert brugernavn eller adgangskode');
+      else if(!u||!(m.token?(u.tokens||[]).includes(sha(m.token)):u.h===hash(p,u.salt)))return wrong(ws,'Forkert brugernavn eller adgangskode');
       ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
-    if(ws.u)handle(ws.u,m)});
+    if(ws.u)handle(ws.u,m,ws)});
   ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);pushAll(u)})});
 // auto-sletning af udløbne beskeder
 setInterval(()=>{const now=Date.now();let ch=0;
