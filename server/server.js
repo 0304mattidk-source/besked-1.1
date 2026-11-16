@@ -1,10 +1,25 @@
 // Start: ACCESS_CODE=min-kode node server.js
 const {WebSocketServer}=require('ws'),http=require('http'),fs=require('fs'),cr=require('crypto');
 const CODE=process.env.ACCESS_CODE||'1234',PORT=+process.env.PORT||8080,F='data.json';
-let db={users:{},rooms:{}};try{db=JSON.parse(fs.readFileSync(F,'utf8'))}catch{}
-const save=()=>fs.writeFile(F,JSON.stringify(db),()=>{});
+let db={users:{},rooms:{}},pg=null,dirty=0,tm=null;
+const fromFile=()=>{try{return JSON.parse(fs.readFileSync(F,'utf8'))}catch{return null}};
+// Med DATABASE_URL (fx Neon) gemmes alt i Postgres, så data overlever genstart af serveren
+if(process.env.DATABASE_URL){const u=process.env.DATABASE_URL;pg=new (require('pg').Pool)({connectionString:u,max:2,ssl:/sslmode=/.test(u)?undefined:{rejectUnauthorized:false}})}
+async function load(){
+  if(!pg){db=fromFile()||db;return}
+  for(let i=0;;i++){try{
+    await pg.query('create table if not exists kv(k text primary key,v jsonb not null)');
+    const r=await pg.query("select v from kv where k='db'");db=r.rows[0]?r.rows[0].v:(fromFile()||db);console.log('Database forbundet');return
+  }catch(e){console.error('DB-fejl:',e.message);if(i>=4)process.exit(1);await new Promise(r=>setTimeout(r,3000))}}}
+async function flush(){if(!dirty)return;dirty=0;const s=JSON.stringify(db);
+  try{if(pg)await pg.query("insert into kv(k,v) values('db',$1) on conflict(k) do update set v=excluded.v",[s]);else fs.writeFileSync(F,s)}
+  catch(e){console.error('Gem-fejl:',e.message);dirty=1}}
+const save=()=>{dirty=1;if(!tm)tm=setTimeout(()=>{tm=null;flush()},1500)};
+for(const sg of['SIGTERM','SIGINT'])process.on(sg,async()=>{await flush();process.exit(0)});
 const id=()=>cr.randomBytes(6).toString('hex'),hash=(p,s)=>cr.scryptSync(p,s,32).toString('hex');
 const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
+const sha=t=>cr.createHash('sha256').update(String(t)).digest('hex');
+const vurl=i=>{i=String(i||'').trim();return /^https:\/\/[^\s"'<>]{4,480}$/.test(i)?i:''};
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
 const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
@@ -24,7 +39,7 @@ function accept(u,n){const a=db.users[u],b=db.users[n];
   if(!Object.values(db.rooms).some(r=>r.type=='dm'&&r.members.includes(u)&&r.members.includes(n))){
     const r={id:id(),type:'dm',members:[u,n],messages:[]};db.rooms[r.id]=r}
   save();push(u);push(n)}
-function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
+function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   if(m.t=='friend'){const n=String(m.name).trim(),o=db.users[n];
     if(!o||n==u)return note('Brugeren findes ikke');
     if(me.friends.includes(n))return note('I er allerede venner');
@@ -34,12 +49,12 @@ function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='decline'){me.incoming=me.incoming.filter(x=>x!=m.name);save();push(u)}
   else if(m.t=='group'){const ms=[...new Set((m.members||[]).filter(x=>me.friends.includes(x)))];
     if(!ms.length)return note('Vælg mindst én ven');
-    const r={id:id(),type:'group',name:String(m.name||'Gruppe').trim().slice(0,30)||'Gruppe',members:[u,...ms],messages:[]};
+    const r={id:id(),type:'group',name:String(m.name||'Gruppe').trim().slice(0,30)||'Gruppe',members:[u,...ms],messages:[],img:vurl(m.img)};
     db.rooms[r.id]=r;save();r.members.forEach(push)}
   else if(m.t=='msg'){const r=db.rooms[m.room],text=String(m.text||'').trim().slice(0,2000),f=m.file;
     const file=f&&typeof f.data=='string'&&f.data.startsWith('data:')&&f.data.length<2.2e6?{name:String(f.name||'fil').slice(0,80),data:f.data}:null;
     if(!r||!r.members.includes(u)||(!text&&!file))return;
-    const ts=Date.now(),msg={id:id(),u,text,ts,exp:me.ttl?ts+me.ttl*60000:0,file,r:{}};
+    const ts=Date.now(),msg={id:id(),u,text,ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file,r:{}};
     r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
   else if(['edit','delmsg','react','typing','leave'].includes(m.t)){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
     if(m.t=='typing')return r.members.forEach(x=>x!=u&&to(x,{t:'typing',room:r.id,u}));
@@ -57,27 +72,33 @@ function handle(u,m){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(typeof m.img=='string'){const i=m.img.trim();if(!i)me.img='';else if(/^https:\/\/[^\s"'<>]{4,480}$/.test(i))me.img=i;else note('Billed-URL skal starte med https://')}
     if(/^#[0-9a-f]{6}$/i.test(m.color))me.color=m.color;
     if(DECOS.includes(m.deco))me.deco=m.deco;
-    me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
+    if(m.ttl!==undefined)me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
     save();pushAll(u)}
+  else if(m.t=='groupedit'){const r=db.rooms[m.room];if(!r||r.type!='group'||!r.members.includes(u))return;
+    const n=String(m.name||'').trim().slice(0,30);if(n)r.name=n;
+    const i=String(m.img||'').trim();if(!i)r.img='';else if(vurl(i))r.img=i;else note('Billed-URL skal starte med https://');
+    save();r.members.forEach(push)}
+  else if(m.t=='remember'){const t=id()+id()+id();me.tokens=[...(me.tokens||[]),sha(t)].slice(-5);save();send(ws,{t:'token',token:t})}
+  else if(m.t=='forget'){me.tokens=(me.tokens||[]).filter(x=>x!=sha(m.token));save()}
   else if(m.t=='wipe'){roomsOf(u).forEach(r=>{r.messages=[];cast(r,{t:'wiped',room:r.id})});save()}}
-const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});srv.listen(PORT);
+const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});load().then(()=>srv.listen(PORT));
 wss.on('connection',(ws,req)=>{ws.ip=ip(req);
   ws.on('message',raw=>{let m;try{m=JSON.parse(raw)}catch{return}
     if(m.t=='auth'&&blocked(ws))return send(ws,{t:'err',e:'For mange forsøg. Vent 5 minutter.'});
     if(m.t=='auth'){
       if(m.signup&&m.code!==CODE)return wrong(ws,'Forkert invitationskode');
       const n=String(m.name||'').trim(),p=String(m.pw||'');
-      if(!/^[\w.-]{2,20}$/.test(n)||p.length<4)return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
+      if(!/^[\w.-]{2,20}$/.test(n)||(!m.token&&p.length<4))return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
       let u=db.users[n];
       if(m.signup){if(u)return send(ws,{t:'err',e:'Brugernavnet er optaget'});
         const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',ttl:0,friends:[],incoming:[]};save()}
-      else if(!u||u.h!==hash(p,u.salt))return wrong(ws,'Forkert brugernavn eller adgangskode');
+      else if(!u||!(m.token?(u.tokens||[]).includes(sha(m.token)):u.h===hash(p,u.salt)))return wrong(ws,'Forkert brugernavn eller adgangskode');
       ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
-    if(ws.u)handle(ws.u,m)});
+    if(ws.u)handle(ws.u,m,ws)});
   ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);pushAll(u)})});
 // auto-sletning af udløbne beskeder
 setInterval(()=>{const now=Date.now();let ch=0;
-  for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>m.exp&&m.exp<=now).map(m=>m.id);
+  for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>m.ts+864e5<=now||(m.exp&&m.exp<=now)).map(m=>m.id);
     if(ids.length){r.messages=r.messages.filter(m=>!ids.includes(m.id));cast(r,{t:'del',room:r.id,ids});ch=1}}
   if(ch)save()},5000);
 console.log(`Server kører på port ${PORT}. App-kode: ${CODE}`);
