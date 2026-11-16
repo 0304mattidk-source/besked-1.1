@@ -1,5 +1,7 @@
 // Start: ACCESS_CODE=min-kode node server.js
 const {WebSocketServer}=require('ws'),http=require('http'),fs=require('fs'),cr=require('crypto');
+// Læser .env (fx skrevet af "neon init") til lokal brug. Render bruger i stedet Environment-fanen.
+for(const f of['.env','../.env']){try{for(const l of fs.readFileSync(f,'utf8').split(/\r?\n/)){const m=l.match(/^\s*([A-Za-z_]\w*)\s*=\s*(.*?)\s*$/);if(m&&!(m[1] in process.env))process.env[m[1]]=m[2].replace(/^(["'])(.*)\1$/,'$2')}}catch{}}
 const CODE=process.env.ACCESS_CODE||'1234',PORT=+process.env.PORT||8080,F='data.json';
 let db={users:{},rooms:{}},pg=null,dirty=0,tm=null;
 const fromFile=()=>{try{return JSON.parse(fs.readFileSync(F,'utf8'))}catch{return null}};
