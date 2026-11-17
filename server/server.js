@@ -22,6 +22,8 @@ const id=()=>cr.randomBytes(6).toString('hex'),hash=(p,s)=>cr.scryptSync(p,s,32)
 const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
 const sha=t=>cr.createHash('sha256').update(String(t)).digest('hex');
 const vurl=i=>{i=String(i||'').trim();return /^https:\/\/[^\s"'<>]{4,480}$/.test(i)?i:''};
+const ADMINS=(process.env.ADMINS||'').split(',').map(x=>x.trim()).filter(Boolean);
+const kick=n=>(conns.get(n)||[]).forEach(w=>w.close());
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
 const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
@@ -33,7 +35,7 @@ const cast=(r,o)=>r.members.forEach(m=>to(m,o));
 function push(u){const me=db.users[u];if(!me)return;
   const rooms=roomsOf(u),people={};
   new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
-  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl},friends:me.friends,incoming:me.incoming,rooms,people})}
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u)},friends:me.friends,incoming:me.incoming,rooms,people})}
 const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
 function accept(u,n){const a=db.users[u],b=db.users[n];
   a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
@@ -56,7 +58,8 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='msg'){const r=db.rooms[m.room],text=String(m.text||'').trim().slice(0,2000),f=m.file;
     const file=f&&typeof f.data=='string'&&f.data.startsWith('data:')&&f.data.length<2.2e6?{name:String(f.name||'fil').slice(0,80),data:f.data}:null;
     if(!r||!r.members.includes(u)||(!text&&!file))return;
-    const ts=Date.now(),msg={id:id(),u,text,ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file,r:{}};
+    const rr=m.reply&&r.messages.find(x=>x.id==m.reply);
+    const ts=Date.now(),msg={id:id(),u,text,ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file,r:{},rp:rr?{id:rr.id,u:rr.u,text:(rr.text||'Fil').slice(0,100)}:null};
     r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
   else if(['edit','delmsg','react','typing','leave'].includes(m.t)){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
     if(m.t=='typing')return r.members.forEach(x=>x!=u&&to(x,{t:'typing',room:r.id,u}));
@@ -80,6 +83,20 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     const n=String(m.name||'').trim().slice(0,30);if(n)r.name=n;
     const i=String(m.img||'').trim();if(!i)r.img='';else if(vurl(i))r.img=i;else note('Billed-URL skal starte med https://');
     save();r.members.forEach(push)}
+  else if(m.t=='admin'){if(!ADMINS.includes(u))return;const n=String(m.name||''),x=db.users[n];
+    const info=()=>({t:'admin',code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
+      msgs:Object.values(db.rooms).reduce((a,r)=>a+r.messages.length,0),online:conns.size,kb:Math.round(JSON.stringify(db).length/1024)},
+      users:Object.entries(db.users).map(([k,v])=>({n:k,online:conns.has(k),f:v.friends.length,c:v.created||0,a:ADMINS.includes(k)}))});
+    if(m.op=='delete'&&x&&!ADMINS.includes(n)){const aff=new Set(x.friends);
+      for(const o of Object.values(db.users))o.friends=o.friends.filter(y=>y!=n),o.incoming=o.incoming.filter(y=>y!=n);
+      for(const r of Object.values(db.rooms)){if(!r.members.includes(n))continue;r.members.forEach(y=>aff.add(y));
+        if(r.type=='dm'||r.members.length<=1)delete db.rooms[r.id];else r.members=r.members.filter(y=>y!=n)}
+      kick(n);delete db.users[n];save();aff.forEach(y=>y!=n&&push(y))}
+    else if(m.op=='resetpw'&&x&&String(m.pw||'').length>=4){const s=id();Object.assign(x,{salt:s,h:hash(String(m.pw),s),tokens:[]});save();kick(n)}
+    else if(m.op=='kick'&&x){x.tokens=[];save();kick(n)}
+    else if(m.op=='setcode'){const c=String(m.code||'').trim();db.cfg=db.cfg||{};if(c.length>=4)db.cfg.code=c;else if(!c)delete db.cfg.code;save()}
+    else if(m.op=='wipeall'){for(const r of Object.values(db.rooms)){r.messages=[];cast(r,{t:'wiped',room:r.id})}save()}
+    send(ws,info())}
   else if(m.t=='remember'){const t=id()+id()+id();me.tokens=[...(me.tokens||[]),sha(t)].slice(-5);save();send(ws,{t:'token',token:t})}
   else if(m.t=='forget'){me.tokens=(me.tokens||[]).filter(x=>x!=sha(m.token));save()}
   else if(m.t=='wipe'){roomsOf(u).forEach(r=>{r.messages=[];cast(r,{t:'wiped',room:r.id})});save()}}
@@ -88,16 +105,16 @@ wss.on('connection',(ws,req)=>{ws.ip=ip(req);
   ws.on('message',raw=>{let m;try{m=JSON.parse(raw)}catch{return}
     if(m.t=='auth'&&blocked(ws))return send(ws,{t:'err',e:'For mange forsøg. Vent 5 minutter.'});
     if(m.t=='auth'){
-      if(m.signup&&m.code!==CODE)return wrong(ws,'Forkert invitationskode');
+      if(m.signup&&m.code!==((db.cfg&&db.cfg.code)||CODE))return wrong(ws,'Forkert invitationskode');
       const n=String(m.name||'').trim(),p=String(m.pw||'');
       if(!/^[\w.-]{2,20}$/.test(n)||(!m.token&&p.length<4))return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
       let u=db.users[n];
       if(m.signup){if(u)return send(ws,{t:'err',e:'Brugernavnet er optaget'});
-        const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',ttl:0,friends:[],incoming:[]};save()}
+        const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',created:Date.now(),ttl:0,friends:[],incoming:[]};save()}
       else if(!u||!(m.token?(u.tokens||[]).includes(sha(m.token)):u.h===hash(p,u.salt)))return wrong(ws,'Forkert brugernavn eller adgangskode');
       ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
     if(ws.u)handle(ws.u,m,ws)});
-  ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);pushAll(u)})});
+  ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);if(db.users[u])pushAll(u)})});
 // auto-sletning af udløbne beskeder
 setInterval(()=>{const now=Date.now();let ch=0;
   for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>m.ts+864e5<=now||(m.exp&&m.exp<=now)).map(m=>m.id);

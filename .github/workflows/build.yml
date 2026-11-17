@@ -1,4 +1,4 @@
-name: Byg Besked.exe
+name: Byg og udgiv Besked
 on: [push, workflow_dispatch]
 permissions:
   contents: write
@@ -10,12 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
-      - run: npm run dist
-      - uses: actions/upload-artifact@v4
-        with: { name: Besked-exe, path: dist/Besked.exe }
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: seneste
-          name: Seneste version
-          files: dist/Besked.exe
-          make_latest: true
+      - run: npm version 1.3.${{ github.run_number }} --no-git-tag-version
+      - run: npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

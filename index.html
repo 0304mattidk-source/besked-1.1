@@ -55,7 +55,12 @@ select:focus{border-color:var(--a)}select option{background:#26272c;color:#fff}
 .d-ice::before{background:linear-gradient(#e0f7ff,#4fc3f7);box-shadow:0 0 10px #8df}.d-toxic::before{background:#7cfc00;box-shadow:0 0 14px #7cfc00;animation:gl .8s infinite alternate}
 .d-sakura::before{background:linear-gradient(135deg,#ffc1d6,#ff6fa5)}.d-galaxy::before{background:conic-gradient(#7b2ff7,#00d4ff,#ff00c8,#7b2ff7);animation:sp 6s linear infinite reverse}
 @keyframes sp{to{transform:rotate(1turn)}}@keyframes gl{to{opacity:.45}}@keyframes fi{from{opacity:0}}@keyframes pp{from{opacity:0;transform:scale(.96)}}
-body.nomo *,body.nomo *::before{animation:none!important;transition:none!important}.logo .i,.brand>.i,.seg button.on .i{color:var(--a)}.sr>.i,.empty .i{color:var(--m)}.box>input{margin:6px 0}body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
+body.nomo *,body.nomo *::before{animation:none!important;transition:none!important}.logo .i,.brand>.i,.seg button.on .i{color:var(--a)}.sr>.i,.empty .i{color:var(--m)}.box>input{margin:6px 0}.rq{border-left:3px solid var(--a);padding:2px 8px;margin:2px 0;color:var(--m);font-size:12.5px;background:var(--h);border-radius:0 8px 8px 0;max-width:420px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rpl{display:flex;align-items:center;gap:10px;margin:0 18px;padding:6px 12px;background:var(--p);border:1px solid var(--bd);border-bottom:0;border-radius:12px 12px 0 0}.rpl+.comp{border-top-left-radius:0;border-top-right-radius:0;margin-top:0}
+#main{position:relative}#ep{position:absolute;bottom:84px;left:60px;width:340px;background:var(--bx);border:1px solid var(--bd);border-radius:14px;box-shadow:0 8px 30px #0006;padding:8px;z-index:6}
+.et{display:flex;gap:4px;border-bottom:1px solid var(--bd);padding-bottom:6px}.et span,.eg span{cursor:pointer;border-radius:8px;padding:3px 6px;font-size:20px}.et span:hover,.eg span:hover,.et span.on{background:var(--h)}
+.eg{display:grid;grid-template-columns:repeat(8,1fr);max-height:220px;overflow:auto;padding-top:6px}.eg span{text-align:center}.ast .card{flex:1;align-items:center;text-align:center;margin:0}.ast b{font-size:22px}
+body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
 </style>
 <body>
 <div id=corner><button id=lo class=g onclick=logout()>Log ud</button><button id=av2 class=g onclick=adv()></button></div>
@@ -79,12 +84,13 @@ const room=id=>S.rooms.find(r=>r.id==id);
 const toast=t=>{const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),2500)};
 const DEFAULT_SERVER=''; // skriv evt. din Render-adresse her, fx 'besked-server.onrender.com'
 const norm=u=>{u=(u||'').trim();return u?u.replace(/^http/,'ws').replace(/^(?!wss?:)/,'wss://'):''};
-let srv=norm(localStorage.srv2||DEFAULT_SERVER),booting=0,auto=0;
+let srv=norm(localStorage.srv2||DEFAULT_SERVER),booting=0,auto=0,upDone=0;
 function dial(url){return new Promise((ok,no)=>{let w;try{w=new WebSocket(url)}catch{return no()}
   const t=setTimeout(()=>{w.onclose=w.onerror=w.onopen=null;w.close();no()},20000);
   w.onopen=()=>{clearTimeout(t);ws=w;w.onmessage=e=>on(JSON.parse(e.data));w.onclose=()=>{S=null;boot()};ok()};
   w.onerror=()=>{clearTimeout(t);no()}})}
 async function boot(skip){if(booting)return;booting=1;cur=null;closeM();show('boot');
+  if(window.api&&!upDone&&!sessionStorage.skipup){upDone=1;$('#bt').textContent='Tjekker for opdateringer…';const r=await window.api.update();if(r=='installing'){$('#bt').textContent='App opdaterer…';await new Promise(()=>{})}}
   if(!srv){booting=0;$('#bt').textContent='Vælg en server under Avanceret';return adv()}
   const bt=$('#bt');bt.textContent='Forbinder…';const t=setTimeout(()=>bt.textContent='Server starter… (kan tage op til et minut)',2500);
   for(;;){try{await dial(srv);break}catch{await new Promise(r=>setTimeout(r,2500))}}
@@ -94,7 +100,7 @@ async function boot(skip){if(booting)return;booting=1;cur=null;closeM();show('bo
 const send1=o=>{if(!ws||ws.readyState!=1)return boot();err();tx(o)};
 const unlock=()=>send1({t:'auth',name:localStorage.user,pw:$('#code').value});
 const login=su=>send1({t:'auth',signup:su,code:$('#ic').value,name:$('#nm').value.trim(),pw:$('#pw').value});
-function lock(e){S=null;closeM();if(ws){ws.onclose=null;ws.close()}$('#code').value=$('#pw').value='';err(e);boot(1)}
+function lock(e){S=null;unread={};badge();closeM();if(ws){ws.onclose=null;ws.close()}$('#code').value=$('#pw').value='';err(e);boot(1)}
 const logout=()=>{if(S&&localStorage.tok)tx({t:'forget',token:localStorage.tok});delete localStorage.tok;delete localStorage.user;lock()};
 function adv(){modal(`<h3>Avancerede indstillinger</h3><small>Server-adresse</small><input id=sv value="${esc(srv)}" placeholder="fx besked-server.onrender.com"><div class=row><button class=g onclick=closeM()>Annullér</button><button onclick=saveAdv()>Gem og forbind</button></div>`)}
 const saveAdv=()=>{srv=norm($('#sv').value);localStorage.srv2=srv;closeM();if(ws){ws.onclose=null;ws.close()}S=null;boot()};
@@ -103,19 +109,20 @@ function applyBg(){const a=localStorage.g1,b=localStorage.g2,on=hx(a)&&hx(b)&&lo
 function on(m){
   if(m.t=='err'){err(m.e);if(auto){auto=0;delete localStorage.tok;$('#lu').textContent=localStorage.user||'';show(localStorage.user?'lock':'login')}}
   else if(m.t=='note')toast(m.e);
+  else if(m.t=='admin')adminUI(m);
   else if(m.t=='token'){localStorage.tok=m.token;toast('Auto-login er slået til')}
   else if(m.t=='state'){S=m;auto=0;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
   else if(!S)return;
-  else if(m.t=='msg'){const r=room(m.room);if(!r)return;r.messages.push(m.m);if(m.m.u!=S.me.name){if(pf().sound!==0)beep();if(pf().notif!==0&&!document.hasFocus())new Notification(m.m.u,{body:m.m.text||'Fil'})}if(cur==r.id&&tab=='chats')msgs();else unread[r.id]=1;list()}
+  else if(m.t=='msg'){const r=room(m.room);if(!r)return;r.messages.push(m.m);if(m.m.u!=S.me.name){if(pf().sound!==0)beep();if(pf().notif!==0&&!document.hasFocus())new Notification(m.m.u,{body:m.m.text||'Fil'})}if(m.m.u!=S.me.name&&!(cur==r.id&&tab=='chats'&&document.hasFocus()))unread[r.id]=(unread[r.id]||0)+1;if(cur==r.id&&tab=='chats')msgs();list()}
   else if(m.t=='typing'){(typers[m.room]=typers[m.room]||{})[m.u]=Date.now()+3000;showTy()}
   else if(m.t=='upd'){const r=room(m.room),g=r&&r.messages.find(x=>x.id==m.id);if(g){g.text=m.text;g.edited=m.edited;g.r=m.r;cur==r.id&&msgs()}}
   else if(m.t=='del'){const r=room(m.room);if(r){r.messages=r.messages.filter(x=>!m.ids.includes(x.id));cur==r.id&&msgs()}}
   else if(m.t=='wiped'){const r=room(m.room);if(r){r.messages=[];cur==r.id&&msgs()}}}
 const render=()=>{side();main()};
-const openR=id=>{if(cur!=id&&$('#in'))$('#in').value='';cur=id;tab='chats';delete unread[id];render()};
+const openR=id=>{if(cur!=id&&$('#in'))$('#in').value='';cur=id;tab='chats';delete unread[id];rep=null;render();badge()};
 const dm=n=>{const r=S.rooms.find(r=>r.type=='dm'&&r.members.includes(n));r&&openR(r.id)};
 const addF=()=>{tx({t:'friend',name:$('#fn').value});$('#fn').value=''};
-let ik=0,q='';
+let ik=0,q='',rep=null,ec='😀';
 const ico=(n,z=20)=>IC[n]?`<span class=i>${IC[n].replace('<svg ',`<svg width="${z}" height="${z}" `)}</span>`:'';
 const pf=()=>{try{return JSON.parse(localStorage.prefs||'{}')}catch{return{}}};
 function applyPf(){const p=pf(),b=document.body;b.dataset.theme=p.theme||'';b.classList.toggle('compact',!!p.compact);b.classList.toggle('nomo',p.motion===0);b.style.fontSize=({s:'13px',l:'15.5px'})[p.font]||'14px';b.style.setProperty('--a',hx(p.accent)?p.accent:'#5865f2')}
@@ -125,8 +132,8 @@ const T=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 const rinfo=r=>{const g=r.type=='group';return{g,n:rname(r),p:g?{emoji:'👥',color:'#4e5058',deco:'none',img:r.img}:P(rname(r))}};
 const prev=r=>{const m=r.messages.at(-1);return m?(m.u==S.me.name?'Du: ':'')+(m.text||'Fil'):'Ingen beskeder endnu'};
 const rooms=()=>S.rooms.filter(r=>rname(r).toLowerCase().includes(q.toLowerCase())).map(r=>{const i=rinfo(r),m=r.messages.at(-1);
-return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''}" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?'<u></u>':m?`<small>${T(m.ts)}</small>`:''}</div>`}).join('')||'<small class=em>Ingen samtaler</small>';
-const list=()=>{const e=$('#rl');if(e)e.innerHTML=rooms()};
+return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''}" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?`<span class=bd>${unread[r.id]}</span>`:m?`<small>${T(m.ts)}</small>`:''}</div>`}).join('')||'<small class=em>Ingen samtaler</small>';
+const list=()=>{const e=$('#rl');if(e)e.innerHTML=rooms();badge()};
 function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Besked</b><button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
 <div class=sch>${ico('search',16)}<input placeholder="Søg i samtaler" value="${esc(q)}" oninput="q=this.value;list()"></div>
 <div class=seg><button class="${tab=='chats'?'on':''}" onclick="tab='chats';render()">${ico('message-circle',18)}Chats</button><button class="${tab=='friends'?'on':''}" onclick="tab='friends';render()">${ico('users',18)}Venner${S.incoming.length?`<span class=bd>${S.incoming.length}</span>`:''}</button></div>
@@ -139,15 +146,15 @@ ${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it car
 const r=cur&&room(cur);
 if(!r){el.innerHTML=`<div class=empty>${ico('message-circle',96)}<h2>Vælg en samtale</h2><small>Eller tilføj en ven under Venner</small></div>`;return}
 const i=rinfo(r);
-el.innerHTML=`<div class=hd>${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div>
-<div class=comp><button class=ib title="Vedhæft fil" onclick="$('#fi').click()">${ico('paperclip',22)}</button><input id=in placeholder="Skriv en besked til ${esc(i.n)}" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter'&&this.value.trim()){tx({t:'msg',room:cur,text:this.value});this.value=''}"><button title="Send" onclick="const e=$('#in');if(e.value.trim()){tx({t:'msg',room:cur,text:e.value});e.value=''}">${ico('send',20)}</button><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
-$('#in').value=d;$('#in').focus();msgs()}
+el.innerHTML=`<div class=hd>${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div><div id=rb></div>
+<div class=comp><button class=ib title="Vedhæft fil" onclick="$('#fi').click()">${ico('paperclip',22)}</button><button class=ib title="Emoji" onclick="epk(event)">${ico('smile',22)}</button><input id=in placeholder="Skriv en besked til ${esc(i.n)}" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter')sendMsg()"><button title="Send" onclick=sendMsg()>${ico('send',20)}</button><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
+$('#in').value=d;$('#in').focus();msgs();rbar()}
 function msgs(){const r=room(cur),b=$('#msgs');if(!r||!b)return;const nb=b.scrollHeight-b.scrollTop-b.clientHeight<80;let pu='',pt=0;
 b.innerHTML=r.messages.map(m=>{const f=m.file,img=f&&/^data:image\/(png|jpe?g|gif|webp);/.test(f.data),first=m.u!=pu||m.ts-pt>3e5;pu=m.u;pt=m.ts;
 return`<div class="m ${first?'f':''}">${first?av(P(m.u)):'<div class=sp></div>'}<div class=mb>${first?`<b>${esc(m.u)}</b> <small>${T(m.ts)}</small>`:''}${m.exp&&m.exp-m.ts<864e5?`<small title="Slettes automatisk"> ${ico('clock',14)}</small>`:''}${m.edited?'<small> (redigeret)</small>':''}
-${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${f?img?`<img class=im src="${esc(f.data)}">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">${ico('paperclip',16)}${esc(f.name)}</a>`:''}
+${m.rp?`<div class=rq>${esc(m.rp.u)}: ${esc(m.rp.text)}</div>`:''}${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${f?img?`<img class=im src="${esc(f.data)}">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">${ico('paperclip',16)}${esc(f.name)}</a>`:''}
 <div class=rx>${Object.entries(m.r||{}).map(([e,a])=>`<span class="${a.includes(S.me.name)?'on':''}" onclick="react('${m.id}','${e}')">${esc(e)} ${a.length}</span>`).join('')}</div>
-<div class=act>${RE.map(e=>`<span onclick="react('${m.id}','${e}')">${e}</span>`).join('')}${m.u==S.me.name?`<span title="Rediger" onclick="editM('${m.id}')">${ico('pencil',16)}</span><span title="Slet" onclick="tx({t:'delmsg',room:cur,id:'${m.id}'})">${ico('trash',16)}</span>`:''}</div></div></div>`}).join('');
+<div class=act><span title="Svar" onclick="replyTo('${m.id}')">${ico('reply',16)}</span>${RE.map(e=>`<span onclick="react('${m.id}','${e}')">${e}</span>`).join('')}${m.u==S.me.name?`<span title="Rediger" onclick="editM('${m.id}')">${ico('pencil',16)}</span><span title="Slet" onclick="tx({t:'delmsg',room:cur,id:'${m.id}'})">${ico('trash',16)}</span>`:''}</div></div></div>`}).join('');
 if(nb)b.scrollTop=b.scrollHeight}
 const react=(id,e)=>tx({t:'react',room:cur,id,emoji:e}),typ=()=>{if(Date.now()-lt>2000){lt=Date.now();tx({t:'typing',room:cur})}};
 const showTy=()=>{const e=$('#ty');if(!e)return;const n=Object.entries(typers[cur]||{}).filter(x=>x[1]>Date.now()).map(x=>x[0]);e.textContent=n.length?n.join(', ')+' skriver…':''};
@@ -161,7 +168,7 @@ function newGroup(){modal(`<h3>Ny gruppe</h3><input id=gn placeholder="Gruppenav
 const SEL=(o,c,f)=>`<select onchange="${f}(this.value)">${o.map(([v,t])=>`<option value="${v}"${v==c?' selected':''}>${t}</option>`).join('')}</select>`;
 const TOG=(on,f,id)=>`<label class=tg><input ${id?`id=${id} `:''}type=checkbox${on?' checked':''} onchange="${f}(this.checked)"><i></i></label>`;
 const ROW=(ic,t,d,c)=>`<div class=sr>${ic?ico(ic,22):''}<div class=tt><b>${t}</b>${d?`<small>${d}</small>`:''}</div>${c}</div>`;
-function settings(){const p=pf(),gon=localStorage.gon=='1';sel=S.me.deco;modal(`<div class=sh><h2>Indstillinger</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
+async function settings(){const ap=window.api&&window.api.getPrefs?await window.api.getPrefs():null;const p=pf(),gon=localStorage.gon=='1';sel=S.me.deco;modal(`<div class=sh><h2>Indstillinger</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
 <h4>Profil</h4><div class=card><div class=row>${av(S.me,0)}<input id=em value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co type=color value="${esc(S.me.color)}"></div>
 <input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><small>Avatar-dekoration</small>
 <div class="row pk">${Object.entries(DECOS).map(([k,v])=>`<div class=pick data-k=${k} onclick="sel='${k}';markSel()">${av({img:S.me.img,emoji:S.me.emoji,color:S.me.color,deco:k})}<small>${v}</small></div>`).join('')}</div><button onclick=saveS()>Gem profil</button></div>
@@ -177,7 +184,12 @@ ${ROW('image','Gradient-baggrund','Farver bag appens paneler',TOG(gon,'tGon','gt
 ${ROW('bell','Notifikationer','Når appen ikke er i fokus',TOG(p.notif!==0,'tNotif'))}
 ${ROW('bell','Notifikationslyd','',TOG(p.sound!==0,'tSound'))}
 ${ROW('clock','Auto-slet mine beskeder','Alle beskeder slettes senest efter 24 timer',SEL([['1','Efter 1 minut'],['5','Efter 5 minutter'],['30','Efter 30 minutter'],['60','Efter 1 time'],['360','Efter 6 timer'],['1440','Efter 24 timer (standard)']],String(S.me.ttl||1440),'sTtl'))}</div>
+${ap?`<h4>Windows-app</h4><div class=card>
+${ROW('desktop','Start med Windows','Starter skjult i systembakken',TOG(ap.startup,'tStartup'))}
+${ROW('shield','Skærmbilleds-beskyttelse','Appen vises sort i skærmbilleder og optagelser',TOG(ap.protect,'tProtect'))}
+${ROW('desktop','Luk til systembakke','Kryds-knappen skjuler appen, så du stadig får beskeder',TOG(ap.tray,'tTray'))}</div>`:''}
 <h4>Sikkerhed og konto</h4><div class=card>
+${S.me.admin?ROW('shield','Admin-panel','Brugere, invitationskode og data',`<button class=g onclick="closeM();admin()">Åbn</button>`):''}
 ${ROW('key','Log automatisk ind','Åbn appen uden kode på denne pc. Alle med adgang til din pc kan så åbne den.',TOG(!!localStorage.tok,'tAuto'))}
 ${ROW('lock','Lås appen nu','Genvej: Ctrl+L',`<button class=g onclick=lock()>Lås</button>`)}
 ${ROW('trash','Slet alle chats','Sletter hos alle. Genvej: Ctrl+Alt+Shift+X',`<button class=r onclick="if(confirm('Slet alle chats for alle?'))tx({t:'wipe'})">Slet</button>`)}
@@ -190,6 +202,31 @@ const tGon=v=>{if(v&&!hx(localStorage.g1)){localStorage.g1='#5865f2';localStorag
 const setBg=()=>{localStorage.g1=$('#g1').value;localStorage.g2=$('#g2').value;localStorage.ga=$('#ga').value;localStorage.gon='1';$('#gt').checked=true;applyBg()};
 const sPre=v=>{const m={sun:['#ff7e5f','#6a3093'],sea:['#0f2027','#2c7a7b'],night:['#42275a','#734b6d']}[v];if(m){$('#g1').value=m[0];$('#g2').value=m[1];setBg()}};
 const tAuto=v=>{if(v)tx({t:'remember'});else{if(localStorage.tok)tx({t:'forget',token:localStorage.tok});delete localStorage.tok}};
+const sendMsg=()=>{const e=$('#in');if(!e||!e.value.trim())return;tx({t:'msg',room:cur,text:e.value,reply:rep&&rep.id});e.value='';rep=null;rbar()};
+const rbar=()=>{const e=$('#rb');if(e)e.innerHTML=rep?`<div class=rpl><div class=tt><small>Svarer til <b>${esc(rep.u)}</b></small><small>${esc(rep.text.slice(0,80))}</small></div><button class=ib onclick="rep=null;rbar()">${ico('circle-x',18)}</button></div>`:''};
+const replyTo=id=>{const m=room(cur).messages.find(x=>x.id==id);if(!m)return;rep={id,u:m.u,text:m.text||'Fil'};rbar();$('#in').focus()};
+const EM={'😀':'😀 😃 😄 😁 😆 😅 😂 🤣 😊 😇 🙂 😉 😍 🥰 😘 😋 😛 😜 🤪 😎 🤩 🥳 😏 😒 😞 😔 😟 🙁 😣 😫 😩 🥺 😢 😭 😤 😠 😡 🤯 😳 🥵 🥶 😱 😰 🤗 🤔 🤭 🤫 😶 😐 😑 😬 🙄 😯 😮 😲 🥱 😴 🤤 😵 🤢 🤮 😷 🤒','👍':'👍 👎 👌 ✌️ 🤞 🤟 🤘 🤙 👈 👉 👆 👇 ☝️ 👋 ✋ 🖖 👏 🙌 🤝 🙏 💪 🫶 👀 🧠','❤️':'❤️ 🧡 💛 💚 💙 💜 🖤 🤍 💔 💕 💖 💗 💘 💝 🔥 ✨ ⭐ 🌟 💯 ✅ ❌ ⚡ 💥 🎉 🎊 🎁 🏆','🐶':'🐶 🐱 🐭 🐹 🐰 🦊 🐻 🐼 🐨 🐯 🦁 🐮 🐷 🐸 🐵 🐔 🐧 🦄 🐝 🦋 🍕 🍔 🍟 🌭 🍿 🍩 🍪 🍫 🍺 🍷 ☕ 🎮 🎧 🎬 🚀 🌈 🌙 ☀️'};
+const epd=()=>{const d=$('#ep');if(d)d.innerHTML=`<div class=et>${Object.keys(EM).map(k=>`<span class="${k==ec?'on':''}" onclick="ec='${k}';epd()">${k}</span>`).join('')}</div><div class=eg>${EM[ec].split(' ').map(e=>`<span onclick="ins('${e}')">${e}</span>`).join('')}</div>`};
+function epk(ev){ev.stopPropagation();const o=$('#ep');if(o)return o.remove();const d=document.createElement('div');d.id='ep';d.onclick=e=>e.stopPropagation();$('#main').append(d);epd()}
+const ins=e=>{const i=$('#in'),a=i.selectionStart??i.value.length;i.setRangeText(e,a,i.selectionEnd??a,'end');i.focus()};
+addEventListener('click',()=>{const o=$('#ep');if(o)o.remove()});
+const total=()=>Object.values(unread).reduce((a,b)=>a+b,0),bimg=new Image();bimg.src='icon.png';
+function badge(){const n=total(),t=n>9?'9+':String(n);document.title=n?`Besked (${n})`:'Besked';if(!window.api||!window.api.badge)return;
+  const mk=z=>{const c=document.createElement('canvas');c.width=c.height=z;return[c,c.getContext('2d')]};
+  const dot=(x,cx,cy,r,f)=>{x.fillStyle='#f23f42';x.beginPath();x.arc(cx,cy,r,0,7);x.fill();x.fillStyle='#fff';x.font=`bold ${f}px sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,cx,cy+1)};
+  const[c,x]=mk(64);x.drawImage(bimg,0,0,64,64);if(n)dot(x,44,44,19,22);
+  let over=null;if(n){const[c2,x2]=mk(32);dot(x2,16,16,16,20);over=c2.toDataURL()}
+  window.api.badge({n,tray:c.toDataURL(),over})}
+addEventListener('focus',()=>{if(cur&&tab=='chats'&&unread[cur]){delete unread[cur];list()}});
+const tPref=(k,v)=>window.api.setPref(k,v),tStartup=v=>tPref('startup',v),tProtect=v=>tPref('protect',v),tTray=v=>tPref('tray',v);
+const admin=()=>tx({t:'admin',op:'list'}),aop=(op,o)=>tx({t:'admin',op,...o});
+function adminUI(m){const D=t=>t?new Date(t).toLocaleDateString():'–';modal(`<div class=sh><h2>Admin-panel</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
+<div class="row ast"><div class=card><b>${m.stats.users}</b><small>brugere</small></div><div class=card><b>${m.stats.online}</b><small>online</small></div><div class=card><b>${m.stats.msgs}</b><small>beskeder</small></div><div class=card><b>${m.stats.kb} KB</b><small>data</small></div></div>
+<h4>Invitationskode</h4><div class=row><input id=ac placeholder="Ny kode (min. 4 tegn)" value="${esc(m.code)}"><button onclick="aop('setcode',{code:$('#ac').value});toast('Gemt')">Gem</button></div><small>Tom = koden fra Render bruges</small>
+<h4>Brugere</h4>${m.users.map(x=>`<div class=sr><div class=tt><b>${esc(x.n)}${x.a?' (admin)':''}</b><small>${x.online?'Online':'Offline'} · ${x.f} venner · oprettet ${D(x.c)}</small></div><button class=g onclick="resetPw('${esc(x.n)}')">Ny kode</button><button class=g onclick="aop('kick',{name:'${esc(x.n)}'})">Log ud</button>${x.a?'':`<button class=r onclick="if(confirm('Slet ${esc(x.n)}?'))aop('delete',{name:'${esc(x.n)}'})">Slet</button>`}</div>`).join('')}
+<h4>Farezone</h4><button class=r onclick="if(confirm('Slet ALLE beskeder hos alle?'))aop('wipeall')">Slet alle beskeder</button>`,'wide')}
+const resetPw=n=>modal(`<h3>Ny adgangskode til ${esc(n)}</h3><input id=np type=password placeholder="Mindst 4 tegn"><div class=row><button class=g onclick=admin()>Tilbage</button><button onclick="aop('resetpw',{name:'${n}',pw:$('#np').value});toast('Adgangskode ændret')">Gem</button></div>`);
+window.api?.onUpd(v=>{if(v=='fejl'){sessionStorage.skipup=1;location.reload()}else $('#bt').textContent='App opdaterer…'+(typeof v=='number'?' '+v+'%':'')});
 applyPf();applyBg();document.querySelectorAll('.logo').forEach(e=>e.innerHTML=ico('message-circle',64));$('#lo').innerHTML=ico('log-out',16)+'Log ud';$('#av2').innerHTML=ico('sliders',16)+'Avanceret';boot();
 setInterval(()=>{if(!S)return;const n=Date.now()+off;let c=0;
   S.rooms.forEach(r=>{const l=r.messages.length;r.messages=r.messages.filter(m=>m.ts+864e5>n&&(!m.exp||m.exp>n));if(r.messages.length!=l&&r.id==cur)c=1});c&&msgs();showTy()},1000);
