@@ -9,3 +9,9 @@ services:
     envVars:
       - key: ACCESS_CODE
         sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMINS
+        sync: false
+      - key: ICE_SERVERS
+        sync: false

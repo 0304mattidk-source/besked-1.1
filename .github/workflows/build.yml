@@ -1,5 +1,7 @@
-name: Byg Besked.exe
+name: Byg og udgiv Master Debate
 on: [push, workflow_dispatch]
+permissions:
+  contents: write
 jobs:
   win:
     runs-on: windows-latest
@@ -8,6 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
-      - run: npm run dist
-      - uses: actions/upload-artifact@v4
-        with: { name: Besked-exe, path: dist/Besked.exe }
+      - run: npm version 1.4.${{ github.run_number }} --no-git-tag-version
+      - run: npx electron-builder --win nsis --publish always
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
