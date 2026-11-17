@@ -23,19 +23,27 @@ const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic'
 const sha=t=>cr.createHash('sha256').update(String(t)).digest('hex');
 const vurl=i=>{i=String(i||'').trim();return /^https:\/\/[^\s"'<>]{4,480}$/.test(i)?i:''};
 const ADMINS=(process.env.ADMINS||'').split(',').map(x=>x.trim()).filter(Boolean);
+const calls=new Map();let ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
+try{if(process.env.ICE_SERVERS)ICE=JSON.parse(process.env.ICE_SERVERS)}catch{}
+const PFK=['emoji','color','img','deco','bio','banner'];
+const pfOf=x=>Object.fromEntries(PFK.map(k=>[k,x[k]||(k=='emoji'?'😀':k=='color'?'#5865f2':k=='deco'?'none':'')]));
+function ensureProf(x){if(!x.profiles||!x.profiles.length){const p={id:id(),name:'Hovedprofil',...pfOf(x)};x.profiles=[p];x.active=p.id}}
+const syncProf=x=>{ensureProf(x);Object.assign(x.profiles.find(q=>q.id==x.active)||x.profiles[0],pfOf(x))};
+const addScore=(u,n)=>{const x=db.users[u],t=Date.now();if(!x||t-(x.st||0)<3000)return;x.st=t;x.score=(x.score||0)+n};
+function leaveCall(u,rid){const s=calls.get(rid);if(!s||!s.delete(u))return;const r=db.rooms[rid];if(!s.size)calls.delete(rid);if(r)cast(r,{t:'callstate',room:rid,users:[...s]})}
 const kick=n=>(conns.get(n)||[]).forEach(w=>w.close());
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
 const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
 const send=(w,o)=>w.readyState===1&&w.send(JSON.stringify(o));
 const to=(u,o)=>(conns.get(u)||[]).forEach(w=>send(w,o));
-const pub=u=>{const x=db.users[u];return{emoji:x.emoji,color:x.color,deco:x.deco,online:conns.has(u),img:x.img||''}};
+const pub=u=>{const x=db.users[u];return{emoji:x.emoji,color:x.color,deco:x.deco,online:conns.has(u),img:x.img||'',bio:x.bio||'',banner:x.banner||'',score:x.score||0}};
 const roomsOf=u=>Object.values(db.rooms).filter(r=>r.members.includes(u));
 const cast=(r,o)=>r.members.forEach(m=>to(m,o));
-function push(u){const me=db.users[u];if(!me)return;
+function push(u){const me=db.users[u];if(!me)return;ensureProf(me);
   const rooms=roomsOf(u),people={};
   new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
-  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u)},friends:me.friends,incoming:me.incoming,rooms,people})}
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[]},friends:me.friends,incoming:me.incoming,rooms,people,ice:ICE,calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
 const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
 function accept(u,n){const a=db.users[u],b=db.users[n];
   a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
@@ -60,15 +68,16 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(!r||!r.members.includes(u)||(!text&&!file))return;
     const rr=m.reply&&r.messages.find(x=>x.id==m.reply);
     const ts=Date.now(),msg={id:id(),u,text,ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file,r:{},rp:rr?{id:rr.id,u:rr.u,text:(rr.text||'Fil').slice(0,100)}:null};
-    r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
+    r.messages.push(msg);if(r.members.length>1)addScore(u,1+(rr&&rr.u!=u?2:0)+(file&&/^data:audio\//.test(file.data)?2:0));save();cast(r,{t:'msg',room:r.id,m:msg});cast(r,{t:'score',u,score:me.score||0})}
   else if(['edit','delmsg','react','typing','leave'].includes(m.t)){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
     if(m.t=='typing')return r.members.forEach(x=>x!=u&&to(x,{t:'typing',room:r.id,u}));
     if(m.t=='leave'){if(r.type!='group')return;const old=[...r.members];r.members=r.members.filter(x=>x!=u);
       if(!r.members.length)delete db.rooms[r.id];save();return old.forEach(push)}
     const g=r.messages.find(x=>x.id==m.id);if(!g)return;
-    const upd=()=>{save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r})};
+    const upd=()=>{save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r,poll:g.poll,keep:g.keep})};
     if(m.t=='react'){if(!REACTS.includes(m.emoji))return;g.r=g.r||{};const a=g.r[m.emoji]||[];
-      g.r[m.emoji]=a.includes(u)?a.filter(x=>x!=u):[...a,u];if(!g.r[m.emoji].length)delete g.r[m.emoji];return upd()}
+      g.r[m.emoji]=a.includes(u)?a.filter(x=>x!=u):[...a,u];if(!g.r[m.emoji].length)delete g.r[m.emoji];
+      if(!a.includes(u)&&g.u!=u){g.rb=g.rb||[];if(!g.rb.includes(u)){g.rb.push(u);const o=db.users[g.u];if(o){o.score=(o.score||0)+1;cast(r,{t:'score',u:g.u,score:o.score})}}}return upd()}
     if(g.u!=u)return;
     if(m.t=='edit'){const t=String(m.text||'').trim().slice(0,2000);if(!t)return;g.text=t;g.edited=1;upd()}
     else{r.messages=r.messages.filter(x=>x!=g);save();cast(r,{t:'del',room:r.id,ids:[g.id]})}}
@@ -77,14 +86,44 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(typeof m.img=='string'){const i=m.img.trim();if(!i)me.img='';else if(/^https:\/\/[^\s"'<>]{4,480}$/.test(i))me.img=i;else note('Billed-URL skal starte med https://')}
     if(/^#[0-9a-f]{6}$/i.test(m.color))me.color=m.color;
     if(DECOS.includes(m.deco))me.deco=m.deco;
-    if(m.ttl!==undefined)me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));
+    if(typeof m.bio=='string')me.bio=m.bio.trim().slice(0,160);
+    if(typeof m.banner=='string'){const i=m.banner.trim();if(!i)me.banner='';else if(vurl(i))me.banner=i;else note('Banner-URL skal starte med https://')}
+    if(m.ttl!==undefined)me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));syncProf(me);
     save();pushAll(u)}
   else if(m.t=='groupedit'){const r=db.rooms[m.room];if(!r||r.type!='group'||!r.members.includes(u))return;
     const n=String(m.name||'').trim().slice(0,30);if(n)r.name=n;
     const i=String(m.img||'').trim();if(!i)r.img='';else if(vurl(i))r.img=i;else note('Billed-URL skal starte med https://');
+    const add=[...new Set(m.add||[])].filter(x=>me.friends.includes(x)&&db.users[x]&&!r.members.includes(x)).slice(0,Math.max(0,20-r.members.length));r.members.push(...add);
     save();r.members.forEach(push)}
+  else if(m.t=='poll'){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
+    const q=String(m.q||'').trim().slice(0,120),o=(Array.isArray(m.opts)?m.opts:[]).map(x=>String(x).trim().slice(0,60)).filter(Boolean).slice(0,6);
+    if(!q||o.length<2)return note('En afstemning skal have et spørgsmål og mindst 2 muligheder');
+    const ts=Date.now(),msg={id:id(),u,text:'',ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file:null,r:{},rp:null,poll:{q,multi:!!m.multi,opts:o.map(t=>({t,v:[]}))}};
+    r.messages.push(msg);if(r.members.length>1)addScore(u,1);save();cast(r,{t:'msg',room:r.id,m:msg});cast(r,{t:'score',u,score:me.score||0})}
+  else if(m.t=='vote'){const r=db.rooms[m.room],g=r&&r.members.includes(u)&&r.messages.find(x=>x.id==m.id);if(!g||!g.poll)return;const p=g.poll,i=+m.i;if(!p.opts[i])return;
+    const had=p.opts[i].v.includes(u);if(!p.multi)p.opts.forEach(x=>x.v=x.v.filter(y=>y!=u));
+    if(had)p.opts[i].v=p.opts[i].v.filter(y=>y!=u);else if(!p.opts[i].v.includes(u))p.opts[i].v.push(u);save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r,poll:g.poll,keep:g.keep})}
+  else if(m.t=='keep'){const r=db.rooms[m.room],g=r&&r.members.includes(u)&&r.messages.find(x=>x.id==m.id);if(!g)return;
+    if(!g.keep){if(r.messages.filter(x=>x.keep).length>=10)return note('Maks. 10 gemte beskeder pr. chat');if(g.file&&r.messages.some(x=>x.keep&&x.file))return note('Der kan kun gemmes ét billede/fil pr. chat')}
+    g.keep=!g.keep;save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r,poll:g.poll,keep:g.keep})}
+  else if(m.t=='pin'){if(!db.rooms[m.room]||!db.rooms[m.room].members.includes(u))return;const p=me.pins||[];me.pins=p.includes(m.room)?p.filter(x=>x!=m.room):[...p,m.room];save();push(u)}
+  else if(m.t=='order'){const mine=new Set(roomsOf(u).map(r=>r.id));me.order=(Array.isArray(m.ids)?m.ids:[]).filter(x=>mine.has(x)).slice(0,200);save();push(u)}
+  else if(m.t=='profnew'){ensureProf(me);if(me.profiles.length>=8)return note('Maks. 8 profiler');syncProf(me);
+    const p={id:id(),name:String(m.name||'').trim().slice(0,20)||'Profil',...pfOf(me)};me.profiles.push(p);me.active=p.id;save();pushAll(u)}
+  else if(m.t=='profswitch'){ensureProf(me);const p=me.profiles.find(q=>q.id==m.id);if(!p)return;syncProf(me);Object.assign(me,pfOf(p));me.active=p.id;save();pushAll(u)}
+  else if(m.t=='profdel'){ensureProf(me);if(me.profiles.length<2)return;me.profiles=me.profiles.filter(q=>q.id!=m.id);
+    if(!me.profiles.find(q=>q.id==me.active)){me.active=me.profiles[0].id;Object.assign(me,pfOf(me.profiles[0]))}save();pushAll(u)}
+  else if(m.t=='report'){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;const i=r.messages.findIndex(x=>x.id==m.id),g=r.messages[i];if(!g||g.u==u)return;
+    db.reports=db.reports||[];if(db.reports.some(x=>x.by==u&&x.mid==g.id))return note('Du har allerede anmeldt den besked');
+    db.reports.push({id:id(),ts:Date.now(),by:u,room:r.id,rn:r.type=='group'?r.name:r.members.join(' & '),mid:g.id,u:g.u,text:g.text||(g.poll?'Afstemning: '+g.poll.q:''),
+      file:g.file?{name:g.file.name,img:/^data:image\/(png|jpe?g|gif|webp);/.test(g.file.data)&&g.file.data.length<3e5?g.file.data:''}:null,
+      ctx:r.messages.slice(Math.max(0,i-3),i).map(x=>({u:x.u,text:(x.text||'Fil').slice(0,120)})),reason:String(m.reason||'').slice(0,200)});
+    db.reports=db.reports.slice(-200);save();note('Tak, beskeden er anmeldt')}
+  else if(m.t=='calljoin'){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;let s=calls.get(r.id);if(!s)calls.set(r.id,s=new Set());s.add(u);cast(r,{t:'callstate',room:r.id,users:[...s],joiner:u})}
+  else if(m.t=='callleave')leaveCall(u,m.room)
+  else if(m.t=='sig'){const s=calls.get(m.room);if(s&&s.has(u)&&s.has(m.to))to(m.to,{t:'sig',room:m.room,from:u,data:m.data})}
   else if(m.t=='admin'){if(!ADMINS.includes(u))return;const n=String(m.name||''),x=db.users[n];
-    const info=()=>({t:'admin',code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
+    const info=()=>({t:'admin',reports:(db.reports||[]).slice().reverse(),code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
       msgs:Object.values(db.rooms).reduce((a,r)=>a+r.messages.length,0),online:conns.size,kb:Math.round(JSON.stringify(db).length/1024)},
       users:Object.entries(db.users).map(([k,v])=>({n:k,online:conns.has(k),f:v.friends.length,c:v.created||0,a:ADMINS.includes(k)}))});
     if(m.op=='delete'&&x&&!ADMINS.includes(n)){const aff=new Set(x.friends);
@@ -93,6 +132,9 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
         if(r.type=='dm'||r.members.length<=1)delete db.rooms[r.id];else r.members=r.members.filter(y=>y!=n)}
       kick(n);delete db.users[n];save();aff.forEach(y=>y!=n&&push(y))}
     else if(m.op=='resetpw'&&x&&String(m.pw||'').length>=4){const s=id();Object.assign(x,{salt:s,h:hash(String(m.pw),s),tokens:[]});save();kick(n)}
+    else if(m.op=='rdismiss'){db.reports=(db.reports||[]).filter(y=>y.id!=m.rid);save()}
+    else if(m.op=='rdelmsg'){const p=(db.reports||[]).find(y=>y.id==m.rid);if(p){const r=db.rooms[p.room];
+      if(r&&r.messages.some(y=>y.id==p.mid)){r.messages=r.messages.filter(y=>y.id!=p.mid);cast(r,{t:'del',room:r.id,ids:[p.mid]})}db.reports=db.reports.filter(y=>y!=p);save()}}
     else if(m.op=='kick'&&x){x.tokens=[];save();kick(n)}
     else if(m.op=='setcode'){const c=String(m.code||'').trim();db.cfg=db.cfg||{};if(c.length>=4)db.cfg.code=c;else if(!c)delete db.cfg.code;save()}
     else if(m.op=='wipeall'){for(const r of Object.values(db.rooms)){r.messages=[];cast(r,{t:'wiped',room:r.id})}save()}
@@ -114,10 +156,10 @@ wss.on('connection',(ws,req)=>{ws.ip=ip(req);
       else if(!u||!(m.token?(u.tokens||[]).includes(sha(m.token)):u.h===hash(p,u.salt)))return wrong(ws,'Forkert brugernavn eller adgangskode');
       ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
     if(ws.u)handle(ws.u,m,ws)});
-  ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size)conns.delete(u);if(db.users[u])pushAll(u)})});
+  ws.on('close',()=>{const u=ws.u;if(!u)return;const s=conns.get(u);s.delete(ws);if(!s.size){conns.delete(u);for(const rid of [...calls.keys()])leaveCall(u,rid)}if(db.users[u])pushAll(u)})});
 // auto-sletning af udløbne beskeder
 setInterval(()=>{const now=Date.now();let ch=0;
-  for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>m.ts+864e5<=now||(m.exp&&m.exp<=now)).map(m=>m.id);
+  for(const r of Object.values(db.rooms)){const ids=r.messages.filter(m=>!m.keep&&(m.ts+864e5<=now||(m.exp&&m.exp<=now))).map(m=>m.id);
     if(ids.length){r.messages=r.messages.filter(m=>!ids.includes(m.id));cast(r,{t:'del',room:r.id,ids});ch=1}}
-  if(ch)save()},5000);
+  if(db.reports){const n0=db.reports.length;db.reports=db.reports.filter(x=>now-x.ts<2592e6);if(db.reports.length!=n0)ch=1}if(ch)save()},5000);
 console.log(`Server kører på port ${PORT}. App-kode: ${CODE}`);

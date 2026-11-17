@@ -1,4 +1,4 @@
-name: Byg og udgiv Besked
+name: Byg og udgiv Master Debate
 on: [push, workflow_dispatch]
 permissions:
   contents: write
@@ -10,7 +10,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm install
-      - run: npm version 1.3.${{ github.run_number }} --no-git-tag-version
+      - run: npm version 1.4.${{ github.run_number }} --no-git-tag-version
       - run: npx electron-builder --win nsis --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
