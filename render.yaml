@@ -15,3 +15,5 @@ services:
         sync: false
       - key: ICE_SERVERS
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false

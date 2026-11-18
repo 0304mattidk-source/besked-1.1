@@ -6,4 +6,5 @@ contextBridge.exposeInMainWorld('api',{
   getPrefs:()=>ipcRenderer.invoke('prefs'),
   setPref:(k,v)=>ipcRenderer.invoke('setpref',k,v),
   badge:b=>ipcRenderer.send('badge',b),
-  copyImage:d=>ipcRenderer.send('copyimg',d)});
+  copyImage:d=>ipcRenderer.send('copyimg',d),
+  checkUpdate:()=>ipcRenderer.invoke('checkupd')});

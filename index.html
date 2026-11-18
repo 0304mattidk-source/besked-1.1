@@ -71,6 +71,7 @@ body.nomo *,body.nomo *::before{animation:none!important;transition:none!importa
 .poll{border:1px solid var(--bd);background:var(--p);border-radius:12px;padding:10px;margin:4px 0;max-width:380px;display:flex;flex-direction:column;gap:2px}
 .po{position:relative;display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid var(--bd);border-radius:10px;margin-top:6px;cursor:pointer;overflow:hidden}.po i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--a) 28%,transparent)}.po span,.po b{position:relative}.po.on{border-color:var(--a)}
 .pinb{opacity:0;cursor:pointer;color:var(--m);display:flex}.it:hover .pinb,.pinb.on{opacity:1}.pinb.on{color:var(--a)}.it.pinned{box-shadow:inset 3px 0 var(--a)}
+.sk{font-size:12px;margin-left:4px;font-weight:600}[style*="--pl"] small{color:#e5e5e5}[style*="--pl"] .i{color:#fff}.spin2{width:36px;height:36px;border:4px solid var(--g);border-top-color:var(--a);border-radius:50%;animation:sp .9s linear infinite;margin:10px auto}
 body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
 </style>
 <body>
@@ -124,6 +125,8 @@ function on(m){
   else if(m.t=='score'){if(S&&S.people[m.u])S.people[m.u].score=m.score;if(S&&m.u==S.me.name){S.me.score=m.score;const e=$('#sc');if(e)e.textContent=`${lvl(m.score)} · ${m.score} point`}}
   else if(m.t=='sig')onSig(m)
   else if(m.t=='callstate')callState(m)
+  else if(m.t=='streak'){const r=S&&room(m.room);if(r){r.sk=m.sk;if(cur==m.room)render();else list()}}
+  else if(m.t=='aians'){if(gwait!=null&&gh[gwait]){gh[gwait].parts[0].text=m.text;gwait=null;gRender()}}
   else if(m.t=='token'){localStorage.tok=m.token;toast('Auto-login er slået til')}
   else if(m.t=='state'){S=m;auto=0;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
   else if(!S)return;
@@ -136,7 +139,7 @@ const render=()=>{side();main();callbar()};
 const openR=id=>{if(cur!=id&&$('#in'))$('#in').value='';cur=id;tab='chats';delete unread[id];rep=null;render();badge()};
 const dm=n=>{const r=S.rooms.find(r=>r.type=='dm'&&r.members.includes(n));r&&openR(r.id)};
 const addF=()=>{tx({t:'friend',name:$('#fn').value});$('#fn').value=''};
-let ik=0,q='',rep=null,ec='😀',call=null,rec=null,gh=[],gc=false,ign={},aTab='o',lastA=null,dg=null;
+let ik=0,q='',rep=null,ec='😀',call=null,rec=null,gh=[],gc=false,ign={},aTab='o',lastA=null,dg=null,gwait=null;
 const ico=(n,z=20)=>IC[n]?`<span class=i>${IC[n].replace('<svg ',`<svg width="${z}" height="${z}" `)}</span>`:'';
 const pf=()=>{try{return JSON.parse(localStorage.prefs||'{}')}catch{return{}}};
 function applyPf(){const p=pf(),b=document.body;b.dataset.theme=p.theme||'';b.classList.toggle('compact',!!p.compact);b.classList.toggle('nomo',p.motion===0);b.style.fontSize=({s:'13px',l:'15.5px'})[p.font]||'14px';b.style.setProperty('--a',hx(p.accent)?p.accent:'#5865f2')}
@@ -146,21 +149,21 @@ const T=t=>new Date(t).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
 const rinfo=r=>{const g=r.type=='group';return{g,n:rname(r),p:g?{emoji:'👥',color:'#4e5058',deco:'none',img:r.img}:P(rname(r))}};
 const prev=r=>{const m=r.messages.at(-1);return m?(m.u==S.me.name?'Du: ':'')+(m.text||(m.poll?'Afstemning':'Fil')):'Ingen beskeder endnu'};
 const rooms=()=>sorted().filter(r=>rname(r).toLowerCase().includes(q.toLowerCase())).map(r=>{const i=rinfo(r),m=r.messages.at(-1),pn=(S.me.pins||[]).includes(r.id);
-return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''} ${pn?'pinned':''}" draggable=true ondragstart="dg='${r.id}'" ondragover="event.preventDefault()" ondrop="dropR('${r.id}')" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?`<span class=bd>${unread[r.id]}</span>`:m?`<small>${T(m.ts)}</small>`:''}<span class="pinb ${pn?'on':''}" title="${pn?'Frigør':'Fastgør øverst'}" onclick="event.stopPropagation();tx({t:'pin',room:'${r.id}'})">${ico('pin',16)}</span></div>`}).join('')||'<small class=em>Ingen samtaler</small>';
+return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''} ${pn?'pinned':''}" style="${i.g?'':pl(i.p)}" draggable=true ondragstart="dg='${r.id}'" ondragover="event.preventDefault()" ondrop="dropR('${r.id}')" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)} ${skH(r)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?`<span class=bd>${unread[r.id]}</span>`:m?`<small>${T(m.ts)}</small>`:''}<span class="pinb ${pn?'on':''}" title="${pn?'Frigør':'Fastgør øverst'}" onclick="event.stopPropagation();tx({t:'pin',room:'${r.id}'})">${ico('pin',16)}</span></div>`}).join('')||'<small class=em>Ingen samtaler</small>';
 const list=()=>{const e=$('#rl');if(e)e.innerHTML=rooms();badge()};
-function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Master Debate</b><button class=ib title="Gemini" onclick=gToggle()>${ico('sparkle',22)}</button><button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
+function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Master Debate</b>${pf().gpanel===0?'':`<button class=ib title="Gemini" onclick=gToggle()>${ico('sparkle',22)}</button>`}<button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
 <div class=sch>${ico('search',16)}<input placeholder="Søg i samtaler" value="${esc(q)}" oninput="q=this.value;list()"></div>
 <div class=seg><button class="${tab=='chats'?'on':''}" onclick="tab='chats';render()">${ico('message-circle',18)}Chats</button><button class="${tab=='friends'?'on':''}" onclick="tab='friends';render()">${ico('users',18)}Venner${S.incoming.length?`<span class=bd>${S.incoming.length}</span>`:''}</button></div>
 <div class=list id=rl>${rooms()}</div>
-<div class=me><div class=row style="flex:1;min-width:0;cursor:pointer;margin:0" title="Skift profil" onclick=profilesUI()>${av(S.me,1)}<div class=tt><b>${esc(S.me.name)}</b><small id=sc>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div><button class=ib title="Indstillinger" onclick=settings()>${ico('settings',20)}</button><button class=ib title="Log ud" onclick=logout()>${ico('log-out',20)}</button></div>`}
+<div class=me><div class=row style="flex:1;min-width:0;cursor:pointer;margin:0;${pl(S.me)}" title="Skift profil" onclick=profilesUI()>${av(S.me,1)}<div class=tt><b>${esc(S.me.name)}</b><small id=sc>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div><button class=ib title="Indstillinger" onclick=settings()>${ico('settings',20)}</button><button class=ib title="Log ud" onclick=logout()>${ico('log-out',20)}</button></div>`}
 function main(){const el=$('#main'),d=$('#in')?$('#in').value:'';
 if(tab=='friends'){el.innerHTML=`<div class=pad><h2>Venner</h2><div class=card><b>Tilføj ven</b><div class=row><input id=fn placeholder="Brugernavn" onkeydown="event.key=='Enter'&&addF()"><button onclick=addF()>${ico('circle-plus',18)}Send</button></div></div>
-${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it card">${av(P(n))}<div class=tt><b>${esc(n)}</b><small>vil være din ven</small></div><button onclick="tx({t:'accept',name:'${esc(n)}'})">${ico('circle-check',18)}Acceptér</button><button class=g onclick="tx({t:'decline',name:'${esc(n)}'})">Afvis</button></div>`).join(''):''}
-<h3>Rangliste</h3><div class=card>${[S.me.name,...S.friends].sort((a,b)=>(P(b).score||0)-(P(a).score||0)).map((n,i)=>`<div class=sr><b style="width:24px">${i+1}.</b>${av(P(n),0)}<div class=tt><b>${esc(n)}</b><small>${lvl(P(n).score)}</small></div><b>${ico('trophy',16)} ${P(n).score||0}</b></div>`).join('')}</div><h3>Dine venner (${S.friends.length})</h3>${S.friends.map(n=>`<div class="it card" onclick="dm('${esc(n)}')">${av(P(n),1)}<div class=tt><b>${esc(n)}</b><small>${P(n).online?'Online':'Offline'} · ${P(n).score||0} point</small></div>${ico('send',18)}</div>`).join('')||'<small>Ingen venner endnu</small>'}</div>`;return}
+${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it card" style="${pl(P(n))}">${av(P(n))}<div class=tt><b>${esc(n)}</b><small>vil være din ven</small></div><button onclick="tx({t:'accept',name:'${esc(n)}'})">${ico('circle-check',18)}Acceptér</button><button class=g onclick="tx({t:'decline',name:'${esc(n)}'})">Afvis</button></div>`).join(''):''}
+<h3>Rangliste</h3><div class=card>${[S.me.name,...S.friends].filter(n=>n!='Gemini').sort((a,b)=>(P(b).score||0)-(P(a).score||0)).map((n,i)=>`<div class=sr style="${pl(P(n))}"><b style="width:24px">${i+1}.</b>${av(P(n),0)}<div class=tt><b>${esc(n)}</b><small>${lvl(P(n).score)}</small></div><b>${ico('trophy',16)} ${P(n).score||0}</b></div>`).join('')}</div><h3>Dine venner (${S.friends.length})</h3>${S.friends.map(n=>`<div class="it card" style="${pl(P(n))}" onclick="dm('${esc(n)}')">${av(P(n),1)}<div class=tt><b>${esc(n)}</b><small>${P(n).online?'Online':'Offline'} · ${P(n).score||0} point</small></div>${ico('send',18)}</div>`).join('')||'<small>Ingen venner endnu</small>'}</div>`;return}
 const r=cur&&room(cur);
 if(!r){el.innerHTML=`<div class=empty>${ico('message-circle',96)}<h2>Vælg en samtale</h2><small>Eller tilføj en ven under Venner</small></div>`;return}
 const i=rinfo(r);
-el.innerHTML=`<div class=hd><span class=pl onclick="prof('${esc(i.n)}')">${av(i.p,!i.g)}</span><div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div><button class=ib title="Ring op (stemme)" onclick="joinCall(cur)">${ico('phone',20)}</button><button class=ib title="Gemte beskeder" onclick=savedM()>${ico('bookmarks',20)}</button>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div><div id=rb></div>
+el.innerHTML=`<div class=hd><span class=pl onclick="prof('${esc(i.n)}')">${av(i.p,!i.g)}</span><div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${skH(r)}<button class=ib title="Ring op (stemme)" onclick="joinCall(cur)">${ico('phone',20)}</button><button class=ib title="Gemte beskeder" onclick=savedM()>${ico('bookmarks',20)}</button>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div><div id=rb></div>
 <div class=comp><button class=ib title="Vedhæft fil" onclick="$('#fi').click()">${ico('paperclip',22)}</button><button class=ib title="Ny afstemning" onclick=pollM()>${ico('poll',22)}</button><button class=ib title="Tag billede med kamera" onclick=cam()>${ico('camera',22)}</button><button class=ib id=mic title="Indtal talebesked" onclick=recToggle()>${ico('mic',22)}</button><button class=ib id=micx title="Annullér" onclick="recStop(0)" hidden>${ico('circle-x',22)}</button><button class=ib title="Emoji" onclick="epk(event)">${ico('smile',22)}</button><input id=in placeholder="Skriv en besked til ${esc(i.n)}" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter')sendMsg()"><button title="Send" onclick=sendMsg()>${ico('send',20)}</button><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
 $('#in').value=d;$('#in').focus();msgs();rbar()}
 function msgs(){const r=room(cur),b=$('#msgs');if(!r||!b)return;const nb=b.scrollHeight-b.scrollTop-b.clientHeight<80;let pu='',pt=0;
@@ -184,7 +187,7 @@ const TOG=(on,f,id)=>`<label class=tg><input ${id?`id=${id} `:''}type=checkbox${
 const ROW=(ic,t,d,c)=>`<div class=sr>${ic?ico(ic,22):''}<div class=tt><b>${t}</b>${d?`<small>${d}</small>`:''}</div>${c}</div>`;
 async function settings(){const ap=window.api&&window.api.getPrefs?await window.api.getPrefs():null;const p=pf(),gon=localStorage.gon=='1';sel=S.me.deco;modal(`<div class=sh><h2>Indstillinger</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
 <h4>Profil</h4><div class=card><div class=row>${av(S.me,0)}<input id=em value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co type=color value="${esc(S.me.color)}"></div>
-<input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><input id=pb maxlength=160 placeholder="Kort beskrivelse (maks 160 tegn)" value="${esc(S.me.bio||'')}"><input id=pbn placeholder="Banner-URL (https://…), valgfri" value="${esc(S.me.banner||'')}"><button class=g onclick="closeM();profilesUI()">Skift eller opret profil</button><small>Avatar-dekoration</small>
+<input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><input id=pb maxlength=160 placeholder="Kort beskrivelse (maks 160 tegn)" value="${esc(S.me.bio||'')}"><input id=pbn placeholder="Banner-URL (https://…), valgfri" value="${esc(S.me.banner||'')}"><input id=ppl placeholder="Navneskilt – billed/GIF-URL (https://…), valgfri" value="${esc(S.me.plate||'')}"><button class=g onclick="closeM();profilesUI()">Skift eller opret profil</button><small>Avatar-dekoration</small>
 <div class="row pk">${Object.entries(DECOS).map(([k,v])=>`<div class=pick data-k=${k} onclick="sel='${k}';markSel()">${av({img:S.me.img,emoji:S.me.emoji,color:S.me.color,deco:k})}<small>${v}</small></div>`).join('')}</div><button onclick=saveS()>Gem profil</button></div>
 <h4>Udseende</h4><div class=card>
 ${ROW('palette','Tema','',SEL([['','Mørk'],['midnight','Midnat'],['light','Lys']],p.theme||'','sTheme'))}
@@ -194,6 +197,10 @@ ${ROW('sliders','Kompakt visning','Tættere beskeder',TOG(p.compact,'tCompact'))
 ${ROW('sliders','Animationer','Ringe, overgange og effekter',TOG(p.motion!==0,'tMotion'))}
 ${ROW('image','Gradient-baggrund','Farver bag appens paneler',TOG(gon,'tGon','gt'))}
 <div class="row gr"><input type=color id=g1 value="${localStorage.g1||'#5865f2'}" oninput=setBg()><input type=color id=g2 value="${localStorage.g2||'#eb459e'}" oninput=setBg()><input type=range id=ga min=0 max=360 value="${localStorage.ga||135}" oninput=setBg()>${SEL([['','Egne farver'],['sun','Solnedgang'],['sea','Hav'],['night','Natskygge']],'','sPre')}</div></div>
+<h4>AI</h4><div class=card>
+${ROW('sparkle','Gemini-panel ved siden af chatten','Viser gnist-knappen og sidepanelet, hvor Gemini kan se din chat, hvis du vælger det',TOG(p.gpanel!==0,'tGp'))}
+${ROW('sparkle','Gemini-personlighed','Gælder både chatten med Gemini og sidepanelet',SEL(S.ai.list.map(x=>[x.id,x.e+' '+x.n]),S.me.persona||'gangster','sPers'))}
+${S.ai.on?'':'<small>Gemini er ikke sat op på serveren endnu. En administrator skal tilføje GEMINI_API_KEY.</small>'}</div>
 <h4>Beskeder</h4><div class=card>
 ${ROW('bell','Notifikationer','Når appen ikke er i fokus',TOG(p.notif!==0,'tNotif'))}
 ${ROW('bell','Notifikationslyd','',TOG(p.sound!==0,'tSound'))}
@@ -201,7 +208,8 @@ ${ROW('clock','Auto-slet mine beskeder','Alle beskeder slettes senest efter 24 t
 ${ap?`<h4>Windows-app</h4><div class=card>
 ${ROW('desktop','Start med Windows','Starter skjult i systembakken',TOG(ap.startup,'tStartup'))}
 ${ROW('shield','Skærmbilleds-beskyttelse','Appen vises sort i skærmbilleder og optagelser',TOG(ap.protect,'tProtect'))}
-${ROW('desktop','Luk til systembakke','Kryds-knappen skjuler appen, så du stadig får beskeder',TOG(ap.tray,'tTray'))}</div>`:''}
+${ROW('desktop','Luk til systembakke','Kryds-knappen skjuler appen, så du stadig får beskeder',TOG(ap.tray,'tTray'))}
+${ROW('download','Søg efter opdatering','Version '+esc(ap.version||''),`<button class=g onclick=chkUpd()>Søg</button>`)}</div>`:''}
 <h4>Sikkerhed og konto</h4><div class=card>
 ${S.me.admin?ROW('shield','Admin-panel','Brugere, invitationskode og data',`<button class=g onclick="closeM();admin()">Åbn</button>`):''}
 ${ROW('key','Log automatisk ind','Åbn appen uden kode på denne pc. Alle med adgang til din pc kan så åbne den.',TOG(!!localStorage.tok,'tAuto'))}
@@ -210,7 +218,7 @@ ${ROW('trash','Slet alle chats','Sletter hos alle. Genvej: Ctrl+Alt+Shift+X',`<b
 ${ROW('server','Server',esc(srv),`<button class=g onclick="closeM();adv()">Skift</button>`)}
 ${ROW('log-out','Log ud','',`<button class=g onclick=logout()>Log ud</button>`)}</div>`,'wide');markSel()}
 const markSel=()=>document.querySelectorAll('.pick').forEach(x=>x.classList.toggle('on',x.dataset.k==sel));
-const saveS=()=>{tx({t:'profile',bio:$('#pb').value,banner:$('#pbn').value,img:$('#pi').value,emoji:$('#em').value,color:$('#co').value,deco:sel});toast('Profil gemt')};
+const saveS=()=>{tx({t:'profile',plate:$('#ppl').value,bio:$('#pb').value,banner:$('#pbn').value,img:$('#pi').value,emoji:$('#em').value,color:$('#co').value,deco:sel});toast('Profil gemt')};
 const sTheme=v=>setPf('theme',v),sAcc=v=>setPf('accent',v),sFont=v=>setPf('font',v),tCompact=v=>setPf('compact',v?1:0),tMotion=v=>setPf('motion',v?1:0),tNotif=v=>setPf('notif',v?1:0),tSound=v=>setPf('sound',v?1:0),sTtl=v=>tx({t:'profile',ttl:+v});
 const tGon=v=>{if(v&&!hx(localStorage.g1)){localStorage.g1='#5865f2';localStorage.g2='#eb459e'}localStorage.gon=v?'1':'0';applyBg()};
 const setBg=()=>{localStorage.g1=$('#g1').value;localStorage.g2=$('#g2').value;localStorage.ga=$('#ga').value;localStorage.gon='1';$('#gt').checked=true;applyBg()};
@@ -240,7 +248,7 @@ function adminOv(m){const D=t=>t?new Date(t).toLocaleDateString():'–';return(`
 <h4>Brugere</h4>${m.users.map(x=>`<div class=sr><div class=tt><b>${esc(x.n)}${x.a?' (admin)':''}</b><small>${x.online?'Online':'Offline'} · ${x.f} venner · oprettet ${D(x.c)}</small></div><button class=g onclick="resetPw('${esc(x.n)}')">Ny kode</button><button class=g onclick="aop('kick',{name:'${esc(x.n)}'})">Log ud</button>${x.a?'':`<button class=r onclick="if(confirm('Slet ${esc(x.n)}?'))aop('delete',{name:'${esc(x.n)}'})">Slet</button>`}</div>`).join('')}
 <h4>Farezone</h4><button class=r onclick="if(confirm('Slet ALLE beskeder hos alle?'))aop('wipeall')">Slet alle beskeder</button>`)}
 const resetPw=n=>modal(`<h3>Ny adgangskode til ${esc(n)}</h3><input id=np type=password placeholder="Mindst 4 tegn"><div class=row><button class=g onclick=admin()>Tilbage</button><button onclick="aop('resetpw',{name:'${n}',pw:$('#np').value});toast('Adgangskode ændret')">Gem</button></div>`);
-window.api?.onUpd(v=>{if(v=='fejl'){sessionStorage.skipup=1;location.reload()}else $('#bt').textContent='App opdaterer…'+(typeof v=='number'?' '+v+'%':'')});
+window.api?.onUpd(v=>{if(v=='fejl'){sessionStorage.skipup=1;location.reload()}else{$('#bt').textContent='App opdaterer…'+(typeof v=='number'?' '+v+'%':'');const u=$('#upp');if(u&&typeof v=='number')u.textContent=v+'%'}});
 const LV=[[0,'Nybegynder'],[100,'Debattant'],[500,'Retoriker'],[1500,'Mester'],[5000,'Stormester']],lvl=s=>LV.filter(l=>(s||0)>=l[0]).at(-1)[1];
 function prof(n){const p=S&&S.people[n];if(!p)return;const me=n==S.me.name,fr=S.friends.includes(n);
 modal(`<div class=pc><div class=pb ${p.banner?`style="background-image:url('${esc(p.banner)}')"`:''}></div><div style="padding:0 20px"><div class=pp>${av(p,0)}<div class=tt style="padding-bottom:4px"><b style="font-size:18px">${esc(n)}</b><small>${lvl(p.score)} · ${p.score||0} point</small></div></div>
@@ -283,7 +291,7 @@ if(call){const r=room(call.room);e.innerHTML=`<span>${ico('phone',18)} I opkald 
 else e.innerHTML=Object.entries(C).filter(([id,u])=>u.length&&!ign[id]&&room(id)).map(([id,u])=>`<span>${ico('phone',18)} Opkald i ${esc(rname(room(id)))} (${u.map(esc).join(', ')})</span><button onclick="joinCall('${id}')">Deltag</button><button class=g onclick="ign['${id}']=1;callbar()">Ignorér</button>`).join('');
 e.style.display=e.innerHTML?'flex':'none'}
 const gOn=()=>$('#gp').classList.contains('on'),gToggle=()=>{$('#gp').classList.toggle('on');gRender()};
-function gRender(){const p=$('#gp');if(!gOn())return;const key=localStorage.gkey;
+function gRender(){const p=$('#gp');if(!gOn())return;const key=1;
 p.innerHTML=`<div class=hd><b style="flex:1">${ico('sparkle',20)} Gemini</b><button class=ib title="Indstillinger" onclick=gCfg()>${ico('settings',20)}</button><button class=ib onclick=gToggle()>${ico('circle-x',20)}</button></div>`+(key?
 `<div class=gm id=gm>${gh.map((g,i)=>g.role=='user'?`<div class="gb u">${esc(g.parts[0].text)}</div>`:`<div class="gb m">${esc(g.parts[0].text)}${cur&&g.parts[0].text!='…'?`<br><button class=g style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="gIns(${i})">Indsæt i chat</button>`:''}</div>`).join('')||'<small>Spørg om hvad som helst, eller brug genvejene herunder.</small>'}</div>
 <div class=gq><button class=g onclick="gAsk('Opsummér samtalen kort.',1)">Opsummér chatten</button><button class=g onclick="gAsk('Foreslå et kort, naturligt svar på den seneste besked.',1)">Foreslå svar</button></div>
@@ -317,6 +325,15 @@ const pollSend=()=>{tx({t:'poll',room:cur,q:$('#pq').value,opts:[...document.que
 const pollH=m=>{const p=m.poll,tot=p.opts.reduce((a,o)=>a+o.v.length,0),me=S.me.name;return`<div class=poll><b>${esc(p.q)}</b><small>${p.multi?'Flere svar tilladt':'Ét svar'} · ${new Set(p.opts.flatMap(o=>o.v)).size} stemmer</small>${p.opts.map((o,i)=>`<div class="po ${o.v.includes(me)?'on':''}" title="${esc(o.v.join(', ')||'Ingen stemmer endnu')}" onclick="tx({t:'vote',room:cur,id:'${m.id}',i:${i}})"><i style="width:${tot?Math.round(o.v.length/tot*100):0}%"></i><span>${esc(o.t)}</span><b>${o.v.length}</b></div>`).join('')}</div>`};
 const whoM=id=>{const m=room(cur).messages.find(x=>x.id==id);if(!m)return;modal(`<div class=sh><h3>Reaktioner</h3><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>${Object.entries(m.r||{}).map(([e,a])=>`<h4>${esc(e)} ${a.length}</h4>${a.map(n=>`<div class=it onclick="closeM();prof('${esc(n)}')">${av(P(n),0)}<b>${esc(n)}</b></div>`).join('')}`).join('')||'<small>Ingen reaktioner endnu</small>'}`)};
 const savedM=()=>{const K=room(cur).messages.filter(x=>x.keep);modal(`<div class=sh><h3>Gemte beskeder (${K.length}/10)</h3><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div><small>Gemte beskeder slettes ikke efter 24 timer. Maks. 10 pr. chat og kun ét billede/fil.</small>${K.map(m=>`<div class=rp><small>${esc(m.u)} · ${T(m.ts)}</small>${m.poll?`<b>Afstemning: ${esc(m.poll.q)}</b>`:''}${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${m.file?/^data:image\//.test(m.file.data)?`<img class=im src="${esc(m.file.data)}" onclick="lb(this.src)">`:/^data:audio\//.test(m.file.data)?`<audio controls src="${esc(m.file.data)}"></audio>`:`<small>${esc(m.file.name)}</small>`:''}<div class=row><button class=g onclick="tx({t:'keep',room:cur,id:'${m.id}'});closeM()">Fjern fra gemte</button></div></div>`).join('')||'<p><small>Ingen gemte beskeder endnu. Tryk på bogmærket på en besked for at gemme den.</small></p>'}`)};
+const pl=p=>p&&p.plate?`--pl:1;background-image:linear-gradient(90deg,rgba(0,0,0,.62),rgba(0,0,0,.12)),url('${esc(p.plate)}');background-size:cover;background-position:center;color:#fff`:'';
+const skH=r=>{const s=r&&r.sk;if(!s||!s.n)return'';return`<span class=sk title="${esc('Billed-streak: '+s.n+' dage'+(s.warn?' – send et billede i dag for at beholde den!':''))}">🔥${s.n}${s.warn?'⌛':''}</span>`};
+const tGp=v=>{setPf('gpanel',v?1:0);if(!v&&gOn())gToggle();side()},sPers=v=>tx({t:'persona',id:v});
+async function gAsk(q,ctx){gc=$('#gctx')?$('#gctx').checked:gc;const hist=gh.filter(g=>g.parts[0].text!='…').slice(-8).map(g=>({r:g.role=='user'?'u':'m',t:g.parts[0].text}));
+gh.push({role:'user',parts:[{text:q}]});gh.push({role:'model',parts:[{text:'…'}]});gwait=gh.length-1;gRender();tx({t:'ai',q,hist,room:ctx&&cur?cur:null})}
+function gCfg(){settings()}
+async function chkUpd(){toast('Søger efter opdatering…');const r=window.api&&window.api.checkUpdate?await window.api.checkUpdate():{s:'dev'};
+if(r.s=='new')modal(`<h3>App opdaterer…</h3><div class=spin2></div><p style="text-align:center">Version ${esc(r.v||'')} hentes og installeres. Appen genstarter selv.<br><b id=upp>0%</b></p>`);
+else toast(r.s=='ok'?`Du har den nyeste version (${r.v})`:r.s=='dev'?'Opdatering virker kun i den installerede app':'Kunne ikke tjekke for opdateringer')}
 applyPf();applyBg();document.querySelectorAll('.logo').forEach(e=>e.innerHTML=ico('message-circle',64));$('#lo').innerHTML=ico('log-out',16)+'Log ud';$('#av2').innerHTML=ico('sliders',16)+'Avanceret';boot();
 setInterval(()=>{if(!S)return;const n=Date.now()+off;let c=0;
   S.rooms.forEach(r=>{const l=r.messages.length;r.messages=r.messages.filter(m=>m.keep||(m.ts+864e5>n&&(!m.exp||m.exp>n)));if(r.messages.length!=l&&r.id==cur)c=1});c&&msgs();showTy()},1000);

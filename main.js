@@ -13,20 +13,17 @@ const menu=()=>Menu.buildFromTemplate([{label:'Åbn Master Debate',click:show},{
   {label:'Luk til systembakke',type:'checkbox',checked:!!prefs.tray,click:i=>set('tray',i.checked)},
   {type:'separator'},{label:'Afslut',click:()=>{quitting=true;app.quit()}}]);
 function apply(){if(win)win.setContentProtection(!!prefs.protect);app.setLoginItemSettings({openAtLogin:!!prefs.startup,args:['--hidden']});if(tray)tray.setContextMenu(menu())}
-function checkUpdate(){return new Promise(res=>{
-  let au;try{au=require('electron-updater').autoUpdater}catch{return res('none')}
-  if(!app.isPackaged)return res('none');
-  let done=0;const fin=v=>{if(!done){done=1;res(v)}};
-  au.on('update-available',()=>fin('installing'));
-  au.on('download-progress',p=>win.webContents.send('upd',Math.round(p.percent)));
+let au=null,upState='';
+function getAU(){if(au)return au;try{au=require('electron-updater').autoUpdater}catch{return null}
+  au.on('download-progress',p=>win&&win.webContents.send('upd',Math.round(p.percent)));
   au.on('update-downloaded',()=>{quitting=true;au.quitAndInstall(true,true)});
-  au.on('update-not-available',()=>fin('none'));
-  au.on('error',()=>{if(done)win.webContents.send('upd','fejl');else fin('none')});
-  setTimeout(()=>fin('none'),12000);
-  au.checkForUpdates().catch(()=>fin('none'))})}
-ipcMain.on('copyimg',(e,d)=>{try{clipboard.writeImage(nativeImage.createFromDataURL(d))}catch{}});
-ipcMain.handle('update',()=>upd||(upd=checkUpdate()));
-ipcMain.handle('prefs',()=>prefs);
+  au.on('error',()=>{if(upState=='installing'&&win)win.webContents.send('upd','fejl')});return au}
+function checkUpdate(manual){return new Promise(async res=>{const a=app.isPackaged&&getAU();if(!a)return res(manual?{s:'dev',v:app.getVersion()}:'none');
+  let done=0;const fin=v=>{if(!done){done=1;res(v)}};setTimeout(()=>fin(manual?{s:'err'}:'none'),12000);
+  try{const r=await a.checkForUpdates();if(r&&r.isUpdateAvailable){upState='installing';fin(manual?{s:'new',v:r.updateInfo.version}:'installing')}else fin(manual?{s:'ok',v:app.getVersion()}:'none')}catch{fin(manual?{s:'err'}:'none')}})}
+ipcMain.handle('update',()=>upd||(upd=checkUpdate(false)));
+ipcMain.handle('checkupd',()=>checkUpdate(true));
+ipcMain.handle('prefs',()=>({...prefs,version:app.getVersion()}));
 ipcMain.handle('setpref',(e,k,v)=>{if(k in prefs)set(k,!!v)});
 ipcMain.on('badge',(e,b)=>{if(!tray||!win)return;tray.setToolTip(b.n?`Master Debate – ${b.n} ulæste`:'Master Debate');
   if(b.tray)tray.setImage(nativeImage.createFromDataURL(b.tray).resize({width:32}));

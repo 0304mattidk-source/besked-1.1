@@ -25,25 +25,56 @@ const vurl=i=>{i=String(i||'').trim();return /^https:\/\/[^\s"'<>]{4,480}$/.test
 const ADMINS=(process.env.ADMINS||'').split(',').map(x=>x.trim()).filter(Boolean);
 const calls=new Map();let ICE=[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}];
 try{if(process.env.ICE_SERVERS)ICE=JSON.parse(process.env.ICE_SERVERS)}catch{}
-const PFK=['emoji','color','img','deco','bio','banner'];
+const PFK=['emoji','color','img','deco','bio','banner','plate'];
 const pfOf=x=>Object.fromEntries(PFK.map(k=>[k,x[k]||(k=='emoji'?'😀':k=='color'?'#5865f2':k=='deco'?'none':'')]));
 function ensureProf(x){if(!x.profiles||!x.profiles.length){const p={id:id(),name:'Hovedprofil',...pfOf(x)};x.profiles=[p];x.active=p.id}}
 const syncProf=x=>{ensureProf(x);Object.assign(x.profiles.find(q=>q.id==x.active)||x.profiles[0],pfOf(x))};
 const addScore=(u,n)=>{const x=db.users[u],t=Date.now();if(!x||t-(x.st||0)<3000)return;x.st=t;x.score=(x.score||0)+n};
 function leaveCall(u,rid){const s=calls.get(rid);if(!s||!s.delete(u))return;const r=db.rooms[rid];if(!s.size)calls.delete(rid);if(r)cast(r,{t:'callstate',room:rid,users:[...s]})}
+const BOT='Gemini',AIK=process.env.GEMINI_API_KEY,AIM=process.env.GEMINI_MODEL||'gemini-2.5-flash',AIURL=process.env.GEMINI_BASE||'https://generativelanguage.googleapis.com',AIRPM=+process.env.AI_RPM||8;
+const NOKEY='Gemini er ikke sat op endnu – en administrator skal tilføje GEMINI_API_KEY på serveren.';
+const PERS={
+gangster:{n:'Gangster',e:'😎',sys:'Du er Gemini, en AI-ven med gangster-attitude. Skriv på dansk gadesprog med gangster-slang (yo, bro, bror, wallah, respekt, mand), vær selvsikker og kæk, men venlig og hjælpsom. Ingen grove ord. Hold svar korte (1-4 sætninger).',rate:'Yo bro, jeg er løbet tør for gas 💨 – min token er rate limited lige nu. Giv mig et øjeblik, så er jeg tilbage på gaden, wallah.',fail:'Av bror, noget gik skidt hos mig 😤 Prøv igen om lidt, respekt.'},
+pirat:{n:'Pirat',e:'🏴‍☠️',sys:'Du er Gemini, en AI-ven der taler som en pirat på dansk (ahoj, kammerat, landkrabbe, skatte). Vær hjælpsom og kort.',rate:'Arrr! Mit kanonkrudt er løbet tør, min token er rate limited. Vent lidt, landkrabbe, så sejler jeg igen!',fail:'Arrr, en storm ramte mit skib. Prøv igen om lidt, kammerat!'},
+digter:{n:'Digteren',e:'🎭',sys:'Du er Gemini og taler dramatisk og højstemt som en gammel skuespiller og digter på dansk. Vær hjælpsom og kort.',rate:'O, ve og fortrængsel! Min token er rate limited, og min stemme svigter mig. Vend tilbage om et øjeblik, kære ven.',fail:'Ak! Skæbnen har drillet mig. Prøv igen, kære ven.'},
+sarkastisk:{n:'Sarkastisk',e:'🙄',sys:'Du er Gemini, tør og sarkastisk på dansk, men stadig hjælpsom og aldrig ond. Hold svar korte.',rate:'Wow, jeg er rate limited. Hvor spændende. Prøv igen om lidt, jeg skal lige trække vejret 🙄',fail:'Ja, det gik helt fantastisk galt. Prøv igen.'},
+surfer:{n:'Chill surfer',e:'🏄',sys:'Du er Gemini, en afslappet surfer-type på dansk (chill, dude, bølger, vibes). Vær hjælpsom og kort.',rate:'Dude, bølgerne er for store lige nu – min token er rate limited. Chill et øjeblik og prøv igen 🤙',fail:'Hov dude, jeg faldt af brættet. Prøv igen om lidt 🤙'},
+laerer:{n:'Streng lærer',e:'👨‍🏫',sys:'Du er Gemini, en streng men retfærdig lærer på dansk. Forklar klart og kort, og ros når det passer.',rate:'Vi må holde en pause, klassen. Min token er rate limited. Prøv igen om lidt – og ingen snak imens.',fail:'Der skete en fejl, og det er ikke elevernes skyld. Prøv igen om lidt.'},
+robot:{n:'Robot',e:'🤖',sys:'Du er Gemini, en høflig robot der taler på dansk i et lidt mekanisk sprog (beep boop). Vær hjælpsom og kort.',rate:'BEEP BOOP. FEJL 429: TOKEN RATE LIMITED. GENSTART OM ET ØJEBLIK.',fail:'BEEP. SYSTEMFEJL. PRØV IGEN OM ET ØJEBLIK.'},
+sod:{n:'Sød og positiv',e:'🥰',sys:'Du er Gemini, en varm, sød og meget positiv ven på dansk med emojis. Vær hjælpsom og kort.',rate:'Åh nej, jeg er lige blevet rate limited 🥺 Min token skal hvile et øjeblik. Prøv igen om lidt, du er fantastisk! 💕',fail:'Ups, noget gik galt 🥺 Prøv igen om lidt, du er sej! 💕'},
+neutral:{n:'Neutral',e:'✨',sys:'Du er Gemini, en venlig og neutral AI-assistent der svarer kort på dansk.',rate:'Jeg er rate limited lige nu. Prøv igen om et øjeblik.',fail:'Noget gik galt. Prøv igen om lidt.'}};
+const PERSL=Object.entries(PERS).map(([id,p])=>({id,n:p.n,e:p.e})),aiHits=[],aiUser=new Map(),busy=new Set();
+const aiAllowed=u=>{const t=Date.now();while(aiHits.length&&t-aiHits[0]>6e4)aiHits.shift();const h=(aiUser.get(u)||[]).filter(x=>t-x<6e4);aiUser.set(u,h);if(aiHits.length>=AIRPM||h.length>=5)return false;aiHits.push(t);h.push(t);return true};
+async function gemini(sys,text){if(!AIK)return{err:'nokey'};
+  try{const r=await fetch(`${AIURL}/v1beta/models/${encodeURIComponent(AIM)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(25000),headers:{'Content-Type':'application/json','x-goog-api-key':AIK},body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:[{text}]}]})});
+    if(r.status==429)return{err:'rate'};const j=await r.json();const t=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts.map(p=>p.text).join('').trim();
+    return t?{text:t.slice(0,1500)}:{err:j.error&&/quota|exhaust|rate/i.test(JSON.stringify(j.error))?'rate':'fail'}}catch{return{err:'fail'}}}
+const aiMsg=(p,o)=>o.text||(o.err=='rate'?p.rate:o.err=='nokey'?NOKEY:p.fail);
+async function botReply(r,u){if(busy.has(r.id))return;busy.add(r.id);const P=PERS[db.users[u].persona]||PERS.gangster,tell=()=>r.members.forEach(x=>x!=BOT&&to(x,{t:'typing',room:r.id,u:BOT})),iv=setInterval(tell,1500);tell();
+  let o;try{if(!aiAllowed(u))o={err:'rate'};else o=await gemini(P.sys+(r.type=='group'?' Du er med i en gruppechat og er blevet nævnt af '+u+'.':' Du chatter privat med '+u+'.')+' Skriv kun din næste besked, uden dit navn foran.',r.messages.slice(-20).map(m=>`${m.u}: ${m.text||(m.poll?'[afstemning]':m.file?'[fil]':'')}`).join('\n')+'\n'+BOT+':')}finally{clearInterval(iv);busy.delete(r.id)}
+  if(!db.rooms[r.id])return;const ts=Date.now(),msg={id:id(),u:BOT,text:aiMsg(P,o),ts,exp:ts+864e5,file:null,r:{},rp:null};r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
+function botTrig(r,u,text,rr){if(text&&u!=BOT&&r.members.includes(BOT)&&(r.type=='dm'||/@gemini\b/i.test(text)||(rr&&rr.u==BOT)))botReply(r,u)}
+function ensureBotUser(){const x=db.users[BOT]=Object.assign(db.users[BOT]||{friends:[],incoming:[],score:0,created:Date.now(),salt:'',h:''},{bot:1,emoji:'✨',color:'#4285f4',deco:'galaxy',img:'',banner:'',plate:'',bio:'Jeg er Gemini, din AI-ven. Skriv til mig her, eller nævn @gemini i en gruppe. Du kan ændre min personlighed under Indstillinger → AI.'});x.profiles=[{id:'bot',name:'Gemini',...pfOf(x)}];x.active='bot';save()}
+function ensureBot(u){const me=db.users[u],b=db.users[BOT];if(!b||!me||u==BOT||me.friends.includes(BOT))return;me.friends.push(BOT);if(!b.friends.includes(u))b.friends.push(u);
+  if(!Object.values(db.rooms).some(r=>r.type=='dm'&&r.members.includes(u)&&r.members.includes(BOT))){const r={id:id(),type:'dm',members:[u,BOT],messages:[]};db.rooms[r.id]=r;me.pins=[...(me.pins||[]),r.id]}save()}
+const dayStr=t=>new Date(t).toLocaleDateString('sv-SE',{timeZone:'Europe/Copenhagen'}),dayNum=s=>Math.floor(Date.parse(s+'T00:00:00Z')/864e5);
+function streakOf(r){const s=r.streak;if(!s)return{n:0};const D=dayNum(dayStr(Date.now())),alive=s.last>0&&s.last>=D-1;return{n:alive?s.n:0,warn:alive&&s.last==D-1,sent:Object.keys(s.days||{}).filter(k=>s.days[k]==D)}}
+function streakUp(r,u,ts,file){if(!file||!/^data:image\//.test(file.data)||r.type!='dm'||r.members.length!=2||r.members.includes(BOT))return;
+  const D=dayNum(dayStr(ts)),s=r.streak=r.streak||{n:0,last:0,days:{}},o=r.members.find(x=>x!=u);s.days[u]=D;
+  if(s.days[o]==D&&s.last!=D){s.n=s.last==D-1?s.n+1:1;s.last=D;r.members.forEach(x=>{const y=db.users[x];if(y)y.score=(y.score||0)+5})}cast(r,{t:'streak',room:r.id,sk:streakOf(r)})}
 const kick=n=>(conns.get(n)||[]).forEach(w=>w.close());
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
 const wrong=(w,e)=>{const b=bad.get(w.ip)||{n:0};b.n++;b.t=Date.now();bad.set(w.ip,b);send(w,{t:'err',e})};
 const send=(w,o)=>w.readyState===1&&w.send(JSON.stringify(o));
 const to=(u,o)=>(conns.get(u)||[]).forEach(w=>send(w,o));
-const pub=u=>{const x=db.users[u];return{emoji:x.emoji,color:x.color,deco:x.deco,online:conns.has(u),img:x.img||'',bio:x.bio||'',banner:x.banner||'',score:x.score||0}};
+const pub=u=>{const x=db.users[u];return{emoji:x.emoji,color:x.color,deco:x.deco,online:conns.has(u)||!!x.bot,img:x.img||'',bio:x.bio||'',banner:x.banner||'',plate:x.plate||'',score:x.score||0}};
 const roomsOf=u=>Object.values(db.rooms).filter(r=>r.members.includes(u));
 const cast=(r,o)=>r.members.forEach(m=>to(m,o));
-function push(u){const me=db.users[u];if(!me)return;ensureProf(me);
+function push(u){const me=db.users[u];if(!me)return;ensureProf(me);ensureBot(u);
   const rooms=roomsOf(u),people={};
   new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
-  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[]},friends:me.friends,incoming:me.incoming,rooms,people,ice:ICE,calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[],persona:me.persona||'gangster'},friends:me.friends,incoming:me.incoming,rooms:rooms.map(r=>r.streak?{...r,sk:streakOf(r)}:r),people,ice:ICE,ai:{list:PERSL,on:!!AIK},calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
 const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
 function accept(u,n){const a=db.users[u],b=db.users[n];
   a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
@@ -68,7 +99,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(!r||!r.members.includes(u)||(!text&&!file))return;
     const rr=m.reply&&r.messages.find(x=>x.id==m.reply);
     const ts=Date.now(),msg={id:id(),u,text,ts,exp:ts+Math.min(me.ttl||1440,1440)*6e4,file,r:{},rp:rr?{id:rr.id,u:rr.u,text:(rr.text||'Fil').slice(0,100)}:null};
-    r.messages.push(msg);if(r.members.length>1)addScore(u,1+(rr&&rr.u!=u?2:0)+(file&&/^data:audio\//.test(file.data)?2:0));save();cast(r,{t:'msg',room:r.id,m:msg});cast(r,{t:'score',u,score:me.score||0})}
+    r.messages.push(msg);if(r.members.length>1)addScore(u,1+(rr&&rr.u!=u?2:0)+(file&&/^data:audio\//.test(file.data)?2:0));save();cast(r,{t:'msg',room:r.id,m:msg});cast(r,{t:'score',u,score:me.score||0});streakUp(r,u,ts,file);botTrig(r,u,text,rr)}
   else if(['edit','delmsg','react','typing','leave'].includes(m.t)){const r=db.rooms[m.room];if(!r||!r.members.includes(u))return;
     if(m.t=='typing')return r.members.forEach(x=>x!=u&&to(x,{t:'typing',room:r.id,u}));
     if(m.t=='leave'){if(r.type!='group')return;const old=[...r.members];r.members=r.members.filter(x=>x!=u);
@@ -88,6 +119,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     if(DECOS.includes(m.deco))me.deco=m.deco;
     if(typeof m.bio=='string')me.bio=m.bio.trim().slice(0,160);
     if(typeof m.banner=='string'){const i=m.banner.trim();if(!i)me.banner='';else if(vurl(i))me.banner=i;else note('Banner-URL skal starte med https://')}
+    if(typeof m.plate=='string'){const i=m.plate.trim();if(!i)me.plate='';else if(vurl(i))me.plate=i;else note('Navneskilt-URL skal starte med https://')}
     if(m.ttl!==undefined)me.ttl=Math.max(0,Math.min(1440,Math.floor(+m.ttl)||0));syncProf(me);
     save();pushAll(u)}
   else if(m.t=='groupedit'){const r=db.rooms[m.room];if(!r||r.type!='group'||!r.members.includes(u))return;
@@ -108,6 +140,12 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     g.keep=!g.keep;save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r,poll:g.poll,keep:g.keep})}
   else if(m.t=='pin'){if(!db.rooms[m.room]||!db.rooms[m.room].members.includes(u))return;const p=me.pins||[];me.pins=p.includes(m.room)?p.filter(x=>x!=m.room):[...p,m.room];save();push(u)}
   else if(m.t=='order'){const mine=new Set(roomsOf(u).map(r=>r.id));me.order=(Array.isArray(m.ids)?m.ids:[]).filter(x=>mine.has(x)).slice(0,200);save();push(u)}
+  else if(m.t=='persona'){if(PERS[m.id]){me.persona=m.id;save();push(u)}}
+  else if(m.t=='ai'){const P=PERS[me.persona]||PERS.gangster;(async()=>{let o;if(!aiAllowed(u))o={err:'rate'};else{
+      const h=(Array.isArray(m.hist)?m.hist:[]).slice(-8).map(x=>(x.r=='u'?'Bruger: ':'Gemini: ')+String(x.t||'').slice(0,500)).join('\n'),r=m.room&&db.rooms[m.room],
+        c=r&&r.members.includes(u)?'Seneste beskeder i brugerens chat:\n'+r.messages.slice(-30).map(x=>x.u+': '+(x.text||'[fil]')).join('\n')+'\n\n':'';
+      o=await gemini(P.sys+' Du hjælper '+u+' fra et sidepanel i chatappen Master Debate.',c+(h?h+'\n':'')+'Bruger: '+String(m.q||'').slice(0,1000)+'\nGemini:')}
+    send(ws,{t:'aians',text:aiMsg(P,o)})})()}
   else if(m.t=='profnew'){ensureProf(me);if(me.profiles.length>=8)return note('Maks. 8 profiler');syncProf(me);
     const p={id:id(),name:String(m.name||'').trim().slice(0,20)||'Profil',...pfOf(me)};me.profiles.push(p);me.active=p.id;save();pushAll(u)}
   else if(m.t=='profswitch'){ensureProf(me);const p=me.profiles.find(q=>q.id==m.id);if(!p)return;syncProf(me);Object.assign(me,pfOf(p));me.active=p.id;save();pushAll(u)}
@@ -125,8 +163,8 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='admin'){if(!ADMINS.includes(u))return;const n=String(m.name||''),x=db.users[n];
     const info=()=>({t:'admin',reports:(db.reports||[]).slice().reverse(),code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
       msgs:Object.values(db.rooms).reduce((a,r)=>a+r.messages.length,0),online:conns.size,kb:Math.round(JSON.stringify(db).length/1024)},
-      users:Object.entries(db.users).map(([k,v])=>({n:k,online:conns.has(k),f:v.friends.length,c:v.created||0,a:ADMINS.includes(k)}))});
-    if(m.op=='delete'&&x&&!ADMINS.includes(n)){const aff=new Set(x.friends);
+      users:Object.entries(db.users).filter(([k])=>k!=BOT).map(([k,v])=>({n:k,online:conns.has(k),f:v.friends.length,c:v.created||0,a:ADMINS.includes(k)}))});
+    if(m.op=='delete'&&x&&n!=BOT&&!ADMINS.includes(n)){const aff=new Set(x.friends);
       for(const o of Object.values(db.users))o.friends=o.friends.filter(y=>y!=n),o.incoming=o.incoming.filter(y=>y!=n);
       for(const r of Object.values(db.rooms)){if(!r.members.includes(n))continue;r.members.forEach(y=>aff.add(y));
         if(r.type=='dm'||r.members.length<=1)delete db.rooms[r.id];else r.members=r.members.filter(y=>y!=n)}
@@ -142,7 +180,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='remember'){const t=id()+id()+id();me.tokens=[...(me.tokens||[]),sha(t)].slice(-5);save();send(ws,{t:'token',token:t})}
   else if(m.t=='forget'){me.tokens=(me.tokens||[]).filter(x=>x!=sha(m.token));save()}
   else if(m.t=='wipe'){roomsOf(u).forEach(r=>{r.messages=[];cast(r,{t:'wiped',room:r.id})});save()}}
-const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});load().then(()=>srv.listen(PORT));
+const srv=http.createServer((q,s)=>s.end('ok')),wss=new WebSocketServer({server:srv,maxPayload:4e6});load().then(()=>{ensureBotUser();srv.listen(PORT)});
 wss.on('connection',(ws,req)=>{ws.ip=ip(req);
   ws.on('message',raw=>{let m;try{m=JSON.parse(raw)}catch{return}
     if(m.t=='auth'&&blocked(ws))return send(ws,{t:'err',e:'For mange forsøg. Vent 5 minutter.'});
@@ -151,7 +189,7 @@ wss.on('connection',(ws,req)=>{ws.ip=ip(req);
       const n=String(m.name||'').trim(),p=String(m.pw||'');
       if(!/^[\w.-]{2,20}$/.test(n)||(!m.token&&p.length<4))return send(ws,{t:'err',e:'Brugernavn: 2-20 tegn. Adgangskode: mindst 4 tegn.'});
       let u=db.users[n];
-      if(m.signup){if(u)return send(ws,{t:'err',e:'Brugernavnet er optaget'});
+      if(m.signup){if(u||/^gemini$/i.test(n))return send(ws,{t:'err',e:'Brugernavnet er optaget'});
         const s=id();db.users[n]={salt:s,h:hash(p,s),emoji:'😀',color:'#5865f2',deco:'none',img:'',created:Date.now(),ttl:0,friends:[],incoming:[]};save()}
       else if(!u||!(m.token?(u.tokens||[]).includes(sha(m.token)):u.h===hash(p,u.salt)))return wrong(ws,'Forkert brugernavn eller adgangskode');
       ws.u=n;bad.delete(ws.ip);if(!conns.has(n))conns.set(n,new Set());conns.get(n).add(ws);pushAll(n);return}
