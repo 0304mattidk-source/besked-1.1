@@ -79,7 +79,7 @@ body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
 <div id=boot class=c><div class=spin></div><div id=bt style="text-align:center">Forbinder…</div></div>
 <div id=lock class=c><div class=logo></div><h2>Master Debate</h2><div id=lu style="font-size:18px;text-align:center"></div><input id=code type=password placeholder="Kode" onkeydown="event.key=='Enter'&&unlock()"><button onclick=unlock()>Åbn</button><small class=err></small></div>
 <div id=login class=c><div class=logo></div><h2>Master Debate</h2><input id=nm placeholder="Brugernavn"><input id=pw type=password placeholder="Adgangskode" onkeydown="event.key=='Enter'&&login(0)"><input id=ic type=password placeholder="Invitationskode (kun ved ny konto)"><div class=row><button onclick=login(0)>Log ind</button><button class=g onclick=login(1)>Opret konto</button></div><small class=err></small></div>
-<div id=app><div id=side></div><div id=main></div><div id=gp></div></div><div id=cb></div><div id=modal></div>
+<div id=app><div id=side></div><div id=main></div></div><div id=cb></div><div id=modal></div>
 <script src="icons.js"></script>
 <script>
 const $=s=>document.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>'&#'+c.charCodeAt(0)+';');
@@ -126,7 +126,6 @@ function on(m){
   else if(m.t=='sig')onSig(m)
   else if(m.t=='callstate')callState(m)
   else if(m.t=='streak'){const r=S&&room(m.room);if(r){r.sk=m.sk;if(cur==m.room)render();else list()}}
-  else if(m.t=='aians'){if(gwait!=null&&gh[gwait]){gh[gwait].parts[0].text=m.text;gwait=null;gRender()}}
   else if(m.t=='token'){localStorage.tok=m.token;toast('Auto-login er slået til')}
   else if(m.t=='state'){S=m;auto=0;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
   else if(!S)return;
@@ -151,7 +150,7 @@ const prev=r=>{const m=r.messages.at(-1);return m?(m.u==S.me.name?'Du: ':'')+(m.
 const rooms=()=>sorted().filter(r=>rname(r).toLowerCase().includes(q.toLowerCase())).map(r=>{const i=rinfo(r),m=r.messages.at(-1),pn=(S.me.pins||[]).includes(r.id);
 return`<div class="it ${cur==r.id&&tab=='chats'?'sel':''} ${pn?'pinned':''}" style="${i.g?'':pl(i.p)}" draggable=true ondragstart="dg='${r.id}'" ondragover="event.preventDefault()" ondrop="dropR('${r.id}')" onclick="openR('${r.id}')">${av(i.p,!i.g)}<div class=tt><b>${esc(i.n)} ${skH(r)}</b><small>${esc(prev(r))}</small></div>${unread[r.id]?`<span class=bd>${unread[r.id]}</span>`:m?`<small>${T(m.ts)}</small>`:''}<span class="pinb ${pn?'on':''}" title="${pn?'Frigør':'Fastgør øverst'}" onclick="event.stopPropagation();tx({t:'pin',room:'${r.id}'})">${ico('pin',16)}</span></div>`}).join('')||'<small class=em>Ingen samtaler</small>';
 const list=()=>{const e=$('#rl');if(e)e.innerHTML=rooms();badge()};
-function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Master Debate</b>${pf().gpanel===0?'':`<button class=ib title="Gemini" onclick=gToggle()>${ico('sparkle',22)}</button>`}<button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
+function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28)}<b>Master Debate</b><button class=ib title="Ny gruppe" onclick=newGroup()>${ico('circle-plus',22)}</button></div>
 <div class=sch>${ico('search',16)}<input placeholder="Søg i samtaler" value="${esc(q)}" oninput="q=this.value;list()"></div>
 <div class=seg><button class="${tab=='chats'?'on':''}" onclick="tab='chats';render()">${ico('message-circle',18)}Chats</button><button class="${tab=='friends'?'on':''}" onclick="tab='friends';render()">${ico('users',18)}Venner${S.incoming.length?`<span class=bd>${S.incoming.length}</span>`:''}</button></div>
 <div class=list id=rl>${rooms()}</div>
@@ -198,8 +197,7 @@ ${ROW('sliders','Animationer','Ringe, overgange og effekter',TOG(p.motion!==0,'t
 ${ROW('image','Gradient-baggrund','Farver bag appens paneler',TOG(gon,'tGon','gt'))}
 <div class="row gr"><input type=color id=g1 value="${localStorage.g1||'#5865f2'}" oninput=setBg()><input type=color id=g2 value="${localStorage.g2||'#eb459e'}" oninput=setBg()><input type=range id=ga min=0 max=360 value="${localStorage.ga||135}" oninput=setBg()>${SEL([['','Egne farver'],['sun','Solnedgang'],['sea','Hav'],['night','Natskygge']],'','sPre')}</div></div>
 <h4>AI</h4><div class=card>
-${ROW('sparkle','Gemini-panel ved siden af chatten','Viser gnist-knappen og sidepanelet, hvor Gemini kan se din chat, hvis du vælger det',TOG(p.gpanel!==0,'tGp'))}
-${ROW('sparkle','Gemini-personlighed','Gælder både chatten med Gemini og sidepanelet',SEL(S.ai.list.map(x=>[x.id,x.e+' '+x.n]),S.me.persona||'gangster','sPers'))}
+${ROW('sparkle','Gemini-personlighed','Gælder i chatten med Gemini og når den nævnes i grupper',SEL(S.ai.list.map(x=>[x.id,x.e+' '+x.n]),S.me.persona||'gangster','sPers'))}
 ${S.ai.on?'':'<small>Gemini er ikke sat op på serveren endnu. En administrator skal tilføje GEMINI_API_KEY.</small>'}</div>
 <h4>Beskeder</h4><div class=card>
 ${ROW('bell','Notifikationer','Når appen ikke er i fokus',TOG(p.notif!==0,'tNotif'))}
@@ -244,6 +242,7 @@ const tPref=(k,v)=>window.api.setPref(k,v),tStartup=v=>tPref('startup',v),tProte
 const admin=()=>tx({t:'admin',op:'list'}),aop=(op,o)=>tx({t:'admin',op,...o});
 function adminOv(m){const D=t=>t?new Date(t).toLocaleDateString():'–';return(`
 <div class="row ast"><div class=card><b>${m.stats.users}</b><small>brugere</small></div><div class=card><b>${m.stats.online}</b><small>online</small></div><div class=card><b>${m.stats.msgs}</b><small>beskeder</small></div><div class=card><b>${m.stats.kb} KB</b><small>data</small></div></div>
+<h4>Gemini</h4><div class=sr><div class=tt><b>${esc(m.ai.model)}</b><small>${m.ai.key?'Nøgle sat':'Ingen nøgle – GEMINI_API_KEY mangler'}${m.ai.last?' · seneste fejl: '+esc(m.ai.last.msg):''}</small></div><button class=g onclick="aop('aitest')">Test</button></div>${m.test?`<small>${esc(m.test)}</small>`:''}
 <h4>Invitationskode</h4><div class=row><input id=ac placeholder="Ny kode (min. 4 tegn)" value="${esc(m.code)}"><button onclick="aop('setcode',{code:$('#ac').value});toast('Gemt')">Gem</button></div><small>Tom = koden fra Render bruges</small>
 <h4>Brugere</h4>${m.users.map(x=>`<div class=sr><div class=tt><b>${esc(x.n)}${x.a?' (admin)':''}</b><small>${x.online?'Online':'Offline'} · ${x.f} venner · oprettet ${D(x.c)}</small></div><button class=g onclick="resetPw('${esc(x.n)}')">Ny kode</button><button class=g onclick="aop('kick',{name:'${esc(x.n)}'})">Log ud</button>${x.a?'':`<button class=r onclick="if(confirm('Slet ${esc(x.n)}?'))aop('delete',{name:'${esc(x.n)}'})">Slet</button>`}</div>`).join('')}
 <h4>Farezone</h4><button class=r onclick="if(confirm('Slet ALLE beskeder hos alle?'))aop('wipeall')">Slet alle beskeder</button>`)}
@@ -290,24 +289,6 @@ function callbar(){const e=$('#cb');if(!e)return;if(!S){e.innerHTML='';e.style.d
 if(call){const r=room(call.room);e.innerHTML=`<span>${ico('phone',18)} I opkald · ${esc(r?rname(r):'')} · ${(C[call.room]||[]).length}</span><button class=g onclick=muteCall()>${call.muted?'Slå lyd til':'Mute'}</button><button class=r onclick=leaveCall()>Læg på</button>`}
 else e.innerHTML=Object.entries(C).filter(([id,u])=>u.length&&!ign[id]&&room(id)).map(([id,u])=>`<span>${ico('phone',18)} Opkald i ${esc(rname(room(id)))} (${u.map(esc).join(', ')})</span><button onclick="joinCall('${id}')">Deltag</button><button class=g onclick="ign['${id}']=1;callbar()">Ignorér</button>`).join('');
 e.style.display=e.innerHTML?'flex':'none'}
-const gOn=()=>$('#gp').classList.contains('on'),gToggle=()=>{$('#gp').classList.toggle('on');gRender()};
-function gRender(){const p=$('#gp');if(!gOn())return;const key=1;
-p.innerHTML=`<div class=hd><b style="flex:1">${ico('sparkle',20)} Gemini</b><button class=ib title="Indstillinger" onclick=gCfg()>${ico('settings',20)}</button><button class=ib onclick=gToggle()>${ico('circle-x',20)}</button></div>`+(key?
-`<div class=gm id=gm>${gh.map((g,i)=>g.role=='user'?`<div class="gb u">${esc(g.parts[0].text)}</div>`:`<div class="gb m">${esc(g.parts[0].text)}${cur&&g.parts[0].text!='…'?`<br><button class=g style="margin-top:6px;padding:4px 10px;font-size:12px" onclick="gIns(${i})">Indsæt i chat</button>`:''}</div>`).join('')||'<small>Spørg om hvad som helst, eller brug genvejene herunder.</small>'}</div>
-<div class=gq><button class=g onclick="gAsk('Opsummér samtalen kort.',1)">Opsummér chatten</button><button class=g onclick="gAsk('Foreslå et kort, naturligt svar på den seneste besked.',1)">Foreslå svar</button></div>
-<div class=comp><input id=gi2 placeholder="Spørg Gemini" onkeydown="if(event.key=='Enter')gSend()"><button onclick=gSend()>${ico('send',20)}</button></div>
-<label class=row style="margin:0 18px 12px;font-size:12px;color:var(--m)"><input type=checkbox id=gctx style="width:auto" ${gc?'checked':''}> Del seneste beskeder fra denne samtale med Gemini</label>`
-:`<div class=pad style="padding:16px"><small>Indsæt din gratis API-nøgle fra aistudio.google.com/apikey. Den gemmes kun på denne pc.</small><input id=gk type=password placeholder="Gemini API-nøgle" style="margin:10px 0"><button onclick=gSave()>Gem nøgle</button></div>`);
-const m=$('#gm');if(m)m.scrollTop=m.scrollHeight}
-const gSave=()=>{localStorage.gkey=$('#gk').value.trim();gRender()},gIns=i=>{const e=$('#in');if(e){e.value=gh[i].parts[0].text;e.focus()}};
-const gSend=()=>{const i=$('#gi2'),q=i.value.trim();if(q){i.value='';gAsk(q,$('#gctx').checked)}};
-function gCfg(){modal(`<h3>Gemini-indstillinger</h3><small>Nøglen gemmes kun på denne pc og sendes direkte til Google. Hent en gratis nøgle på aistudio.google.com/apikey.</small><input id=gk type=password placeholder="API-nøgle" value="${esc(localStorage.gkey||'')}"><input id=gmo list=gml placeholder="Model" value="${esc(localStorage.gmodel||'gemini-2.5-flash')}"><datalist id=gml><option value=gemini-2.5-flash><option value=gemini-2.5-flash-lite><option value=gemini-2.5-pro></datalist><small>Når du deler beskeder, sendes de til Google. På gratisniveauet kan Google bruge input til at forbedre sine produkter.</small><div class=row><button class=r onclick="delete localStorage.gkey;gh=[];closeM();gRender()">Fjern nøgle</button><button onclick="localStorage.gkey=$('#gk').value.trim();localStorage.gmodel=$('#gmo').value.trim()||'gemini-2.5-flash';closeM();gRender()">Gem</button></div>`)}
-async function gAsk(q,ctx){const key=localStorage.gkey;if(!key)return gRender();gc=$('#gctx')?$('#gctx').checked:gc;
-let sys='Du er en hjælpsom assistent ved siden af chatappen Master Debate. Svar kort og på samme sprog som brugeren.';
-if(ctx&&cur)sys+='\n\nSeneste beskeder i samtalen:\n'+room(cur).messages.slice(-30).map(m=>m.u+': '+(m.text||'[fil]')).join('\n');
-gh.push({role:'user',parts:[{text:q}]});gh.push({role:'model',parts:[{text:'…'}]});gRender();const i=gh.length-1;let c=gh.slice(0,-1).slice(-12);while(c.length&&c[0].role!='user')c.shift();
-try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(localStorage.gmodel||'gemini-2.5-flash')}:generateContent`,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:c})});
-const j=await r.json();gh[i].parts[0].text=(j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts.map(p=>p.text).join(''))||'Fejl: '+((j.error&&j.error.message)||'intet svar')}catch{gh[i].parts[0].text='Fejl: kunne ikke nå Gemini (tjek internettet og nøglen).'}gRender()}
 function adminUI(m){lastA=m;const R=m.reports||[],D=t=>new Date(t).toLocaleString([],{dateStyle:'short',timeStyle:'short'});
 const rp=R.map(x=>`<div class=rp><small>${D(x.ts)} · ${esc(x.by)} anmeldte ${esc(x.u)} i ${esc(x.rn)}</small>${x.ctx.map(c=>`<small>${esc(c.u)}: ${esc(c.text)}</small>`).join('')}<div class=tx><b>${esc(x.u)}:</b> ${esc(x.text||'')}</div>${x.file?x.file.img?`<img src="${esc(x.file.img)}">`:`<small>Fil: ${esc(x.file.name)}</small>`:''}${x.reason?`<small>Årsag: ${esc(x.reason)}</small>`:''}<div class=row><button class=r onclick="aop('rdelmsg',{rid:'${x.id}'})">Slet besked</button><button class=g onclick="aop('rdismiss',{rid:'${x.id}'})">Afvis</button><button class=g onclick="aop('kick',{name:'${esc(x.u)}'})">Log bruger ud</button></div></div>`).join('')||'<small>Ingen anmeldelser</small>';
 modal(`<div class=sh><h2>Admin-panel</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div><div class=seg><button class="${aTab=='o'?'on':''}" onclick="aTab='o';adminUI(lastA)">Oversigt</button><button class="${aTab=='r'?'on':''}" onclick="aTab='r';adminUI(lastA)">Anmeldelser${R.length?`<span class=bd>${R.length}</span>`:''}</button></div>${aTab=='r'?rp:adminOv(m)}`,'wide')}
@@ -327,10 +308,7 @@ const whoM=id=>{const m=room(cur).messages.find(x=>x.id==id);if(!m)return;modal(
 const savedM=()=>{const K=room(cur).messages.filter(x=>x.keep);modal(`<div class=sh><h3>Gemte beskeder (${K.length}/10)</h3><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div><small>Gemte beskeder slettes ikke efter 24 timer. Maks. 10 pr. chat og kun ét billede/fil.</small>${K.map(m=>`<div class=rp><small>${esc(m.u)} · ${T(m.ts)}</small>${m.poll?`<b>Afstemning: ${esc(m.poll.q)}</b>`:''}${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${m.file?/^data:image\//.test(m.file.data)?`<img class=im src="${esc(m.file.data)}" onclick="lb(this.src)">`:/^data:audio\//.test(m.file.data)?`<audio controls src="${esc(m.file.data)}"></audio>`:`<small>${esc(m.file.name)}</small>`:''}<div class=row><button class=g onclick="tx({t:'keep',room:cur,id:'${m.id}'});closeM()">Fjern fra gemte</button></div></div>`).join('')||'<p><small>Ingen gemte beskeder endnu. Tryk på bogmærket på en besked for at gemme den.</small></p>'}`)};
 const pl=p=>p&&p.plate?`--pl:1;background-image:linear-gradient(90deg,rgba(0,0,0,.62),rgba(0,0,0,.12)),url('${esc(p.plate)}');background-size:cover;background-position:center;color:#fff`:'';
 const skH=r=>{const s=r&&r.sk;if(!s||!s.n)return'';return`<span class=sk title="${esc('Billed-streak: '+s.n+' dage'+(s.warn?' – send et billede i dag for at beholde den!':''))}">🔥${s.n}${s.warn?'⌛':''}</span>`};
-const tGp=v=>{setPf('gpanel',v?1:0);if(!v&&gOn())gToggle();side()},sPers=v=>tx({t:'persona',id:v});
-async function gAsk(q,ctx){gc=$('#gctx')?$('#gctx').checked:gc;const hist=gh.filter(g=>g.parts[0].text!='…').slice(-8).map(g=>({r:g.role=='user'?'u':'m',t:g.parts[0].text}));
-gh.push({role:'user',parts:[{text:q}]});gh.push({role:'model',parts:[{text:'…'}]});gwait=gh.length-1;gRender();tx({t:'ai',q,hist,room:ctx&&cur?cur:null})}
-function gCfg(){settings()}
+const sPers=v=>tx({t:'persona',id:v});
 async function chkUpd(){toast('Søger efter opdatering…');const r=window.api&&window.api.checkUpdate?await window.api.checkUpdate():{s:'dev'};
 if(r.s=='new')modal(`<h3>App opdaterer…</h3><div class=spin2></div><p style="text-align:center">Version ${esc(r.v||'')} hentes og installeres. Appen genstarter selv.<br><b id=upp>0%</b></p>`);
 else toast(r.s=='ok'?`Du har den nyeste version (${r.v})`:r.s=='dev'?'Opdatering virker kun i den installerede app':'Kunne ikke tjekke for opdateringer')}

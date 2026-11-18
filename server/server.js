@@ -31,7 +31,7 @@ function ensureProf(x){if(!x.profiles||!x.profiles.length){const p={id:id(),name
 const syncProf=x=>{ensureProf(x);Object.assign(x.profiles.find(q=>q.id==x.active)||x.profiles[0],pfOf(x))};
 const addScore=(u,n)=>{const x=db.users[u],t=Date.now();if(!x||t-(x.st||0)<3000)return;x.st=t;x.score=(x.score||0)+n};
 function leaveCall(u,rid){const s=calls.get(rid);if(!s||!s.delete(u))return;const r=db.rooms[rid];if(!s.size)calls.delete(rid);if(r)cast(r,{t:'callstate',room:rid,users:[...s]})}
-const BOT='Gemini',AIK=process.env.GEMINI_API_KEY,AIM=process.env.GEMINI_MODEL||'gemini-2.5-flash',AIURL=process.env.GEMINI_BASE||'https://generativelanguage.googleapis.com',AIRPM=+process.env.AI_RPM||8;
+const BOT='Gemini',AIK=(process.env.GEMINI_API_KEY||'').trim(),AIM=(process.env.GEMINI_MODEL||'gemini-3.5-flash').trim(),AIFB=(process.env.GEMINI_FALLBACK||'gemini-3.6-flash,gemini-2.5-flash').split(',').map(x=>x.trim()).filter(Boolean),AIURL=process.env.GEMINI_BASE||'https://generativelanguage.googleapis.com',AIRPM=+process.env.AI_RPM||8;
 const NOKEY='Gemini er ikke sat op endnu – en administrator skal tilføje GEMINI_API_KEY på serveren.';
 const PERS={
 gangster:{n:'Gangster',e:'😎',sys:'Du er Gemini, en AI-ven med gangster-attitude. Skriv på dansk gadesprog med gangster-slang (yo, bro, bror, wallah, respekt, mand), vær selvsikker og kæk, men venlig og hjælpsom. Ingen grove ord. Hold svar korte (1-4 sætninger).',rate:'Yo bro, jeg er løbet tør for gas 💨 – min token er rate limited lige nu. Giv mig et øjeblik, så er jeg tilbage på gaden, wallah.',fail:'Av bror, noget gik skidt hos mig 😤 Prøv igen om lidt, respekt.'},
@@ -45,10 +45,19 @@ sod:{n:'Sød og positiv',e:'🥰',sys:'Du er Gemini, en varm, sød og meget posi
 neutral:{n:'Neutral',e:'✨',sys:'Du er Gemini, en venlig og neutral AI-assistent der svarer kort på dansk.',rate:'Jeg er rate limited lige nu. Prøv igen om et øjeblik.',fail:'Noget gik galt. Prøv igen om lidt.'}};
 const PERSL=Object.entries(PERS).map(([id,p])=>({id,n:p.n,e:p.e})),aiHits=[],aiUser=new Map(),busy=new Set();
 const aiAllowed=u=>{const t=Date.now();while(aiHits.length&&t-aiHits[0]>6e4)aiHits.shift();const h=(aiUser.get(u)||[]).filter(x=>t-x<6e4);aiUser.set(u,h);if(aiHits.length>=AIRPM||h.length>=5)return false;aiHits.push(t);h.push(t);return true};
-async function gemini(sys,text){if(!AIK)return{err:'nokey'};
-  try{const r=await fetch(`${AIURL}/v1beta/models/${encodeURIComponent(AIM)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(25000),headers:{'Content-Type':'application/json','x-goog-api-key':AIK},body:JSON.stringify({systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:[{text}]}]})});
-    if(r.status==429)return{err:'rate'};const j=await r.json();const t=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts.map(p=>p.text).join('').trim();
-    return t?{text:t.slice(0,1500)}:{err:j.error&&/quota|exhaust|rate/i.test(JSON.stringify(j.error))?'rate':'fail'}}catch{return{err:'fail'}}}
+const SAFE=['HARASSMENT','HATE_SPEECH','SEXUALLY_EXPLICIT','DANGEROUS_CONTENT'].map(c=>({category:'HARM_CATEGORY_'+c,threshold:'BLOCK_ONLY_HIGH'}));
+let aiLast=null;
+const gtext=j=>{const p=j&&j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts;return p?p.filter(x=>x.text&&!x.thought).map(x=>x.text).join('').trim():''};
+async function gcall(model,sys,text,full){const body={systemInstruction:{parts:[{text:sys}]},contents:[{role:'user',parts:[{text}]}]};
+  if(full){body.safetySettings=SAFE;if(/^gemini-3/.test(model))body.generationConfig={thinkingConfig:{thinkingLevel:'low'}}}
+  const r=await fetch(`${AIURL}/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(20000),headers:{'Content-Type':'application/json','x-goog-api-key':AIK},body:JSON.stringify(body)});
+  return{status:r.status,j:await r.json().catch(()=>({}))}}
+async function gemini(sys,text){if(!AIK)return{err:'nokey'};let rate=false,last='';
+  for(const m of[AIM,...AIFB.filter(x=>x!=AIM)]){for(const full of[1,0]){let o;try{o=await gcall(m,sys,text,full)}catch(e){last=m+': '+(e.name=='TimeoutError'?'timeout':e.message);break}
+    const t=gtext(o.j);if(t)return{text:t.slice(0,1500)};if(o.status==429)rate=true;
+    last=`${m}: ${o.status} ${(o.j.error&&o.j.error.message)||(o.j.promptFeedback&&'blokeret: '+o.j.promptFeedback.blockReason)||(o.j.candidates&&o.j.candidates[0]&&'stop: '+o.j.candidates[0].finishReason)||''}`.slice(0,300);
+    if(o.status!=400)break}}
+  aiLast={t:Date.now(),msg:last};console.error('Gemini-fejl:',last);return{err:rate?'rate':'fail'}}
 const aiMsg=(p,o)=>o.text||(o.err=='rate'?p.rate:o.err=='nokey'?NOKEY:p.fail);
 async function botReply(r,u){if(busy.has(r.id))return;busy.add(r.id);const P=PERS[db.users[u].persona]||PERS.gangster,tell=()=>r.members.forEach(x=>x!=BOT&&to(x,{t:'typing',room:r.id,u:BOT})),iv=setInterval(tell,1500);tell();
   let o;try{if(!aiAllowed(u))o={err:'rate'};else o=await gemini(P.sys+(r.type=='group'?' Du er med i en gruppechat og er blevet nævnt af '+u+'.':' Du chatter privat med '+u+'.')+' Skriv kun din næste besked, uden dit navn foran.',r.messages.slice(-20).map(m=>`${m.u}: ${m.text||(m.poll?'[afstemning]':m.file?'[fil]':'')}`).join('\n')+'\n'+BOT+':')}finally{clearInterval(iv);busy.delete(r.id)}
@@ -141,11 +150,6 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='pin'){if(!db.rooms[m.room]||!db.rooms[m.room].members.includes(u))return;const p=me.pins||[];me.pins=p.includes(m.room)?p.filter(x=>x!=m.room):[...p,m.room];save();push(u)}
   else if(m.t=='order'){const mine=new Set(roomsOf(u).map(r=>r.id));me.order=(Array.isArray(m.ids)?m.ids:[]).filter(x=>mine.has(x)).slice(0,200);save();push(u)}
   else if(m.t=='persona'){if(PERS[m.id]){me.persona=m.id;save();push(u)}}
-  else if(m.t=='ai'){const P=PERS[me.persona]||PERS.gangster;(async()=>{let o;if(!aiAllowed(u))o={err:'rate'};else{
-      const h=(Array.isArray(m.hist)?m.hist:[]).slice(-8).map(x=>(x.r=='u'?'Bruger: ':'Gemini: ')+String(x.t||'').slice(0,500)).join('\n'),r=m.room&&db.rooms[m.room],
-        c=r&&r.members.includes(u)?'Seneste beskeder i brugerens chat:\n'+r.messages.slice(-30).map(x=>x.u+': '+(x.text||'[fil]')).join('\n')+'\n\n':'';
-      o=await gemini(P.sys+' Du hjælper '+u+' fra et sidepanel i chatappen Master Debate.',c+(h?h+'\n':'')+'Bruger: '+String(m.q||'').slice(0,1000)+'\nGemini:')}
-    send(ws,{t:'aians',text:aiMsg(P,o)})})()}
   else if(m.t=='profnew'){ensureProf(me);if(me.profiles.length>=8)return note('Maks. 8 profiler');syncProf(me);
     const p={id:id(),name:String(m.name||'').trim().slice(0,20)||'Profil',...pfOf(me)};me.profiles.push(p);me.active=p.id;save();pushAll(u)}
   else if(m.t=='profswitch'){ensureProf(me);const p=me.profiles.find(q=>q.id==m.id);if(!p)return;syncProf(me);Object.assign(me,pfOf(p));me.active=p.id;save();pushAll(u)}
@@ -161,7 +165,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='callleave')leaveCall(u,m.room)
   else if(m.t=='sig'){const s=calls.get(m.room);if(s&&s.has(u)&&s.has(m.to))to(m.to,{t:'sig',room:m.room,from:u,data:m.data})}
   else if(m.t=='admin'){if(!ADMINS.includes(u))return;const n=String(m.name||''),x=db.users[n];
-    const info=()=>({t:'admin',reports:(db.reports||[]).slice().reverse(),code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
+    const info=()=>({t:'admin',ai:{model:AIM,fb:AIFB,key:!!AIK,last:aiLast},reports:(db.reports||[]).slice().reverse(),code:(db.cfg&&db.cfg.code)||'',stats:{users:Object.keys(db.users).length,rooms:Object.keys(db.rooms).length,
       msgs:Object.values(db.rooms).reduce((a,r)=>a+r.messages.length,0),online:conns.size,kb:Math.round(JSON.stringify(db).length/1024)},
       users:Object.entries(db.users).filter(([k])=>k!=BOT).map(([k,v])=>({n:k,online:conns.has(k),f:v.friends.length,c:v.created||0,a:ADMINS.includes(k)}))});
     if(m.op=='delete'&&x&&n!=BOT&&!ADMINS.includes(n)){const aff=new Set(x.friends);
@@ -170,6 +174,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
         if(r.type=='dm'||r.members.length<=1)delete db.rooms[r.id];else r.members=r.members.filter(y=>y!=n)}
       kick(n);delete db.users[n];save();aff.forEach(y=>y!=n&&push(y))}
     else if(m.op=='resetpw'&&x&&String(m.pw||'').length>=4){const s=id();Object.assign(x,{salt:s,h:hash(String(m.pw),s),tokens:[]});save();kick(n)}
+    else if(m.op=='aitest'){gemini('Svar med ét kort ord.','Sig hej.').then(o=>send(ws,{...info(),test:o.text?'OK: '+o.text.slice(0,80):'FEJL: '+((aiLast&&aiLast.msg)||'ukendt')}));return}
     else if(m.op=='rdismiss'){db.reports=(db.reports||[]).filter(y=>y.id!=m.rid);save()}
     else if(m.op=='rdelmsg'){const p=(db.reports||[]).find(y=>y.id==m.rid);if(p){const r=db.rooms[p.room];
       if(r&&r.messages.some(y=>y.id==p.mid)){r.messages=r.messages.filter(y=>y.id!=p.mid);cast(r,{t:'del',room:r.id,ids:[p.mid]})}db.reports=db.reports.filter(y=>y!=p);save()}}
