@@ -230,7 +230,7 @@ const epd=()=>{const d=$('#ep');if(d)d.innerHTML=`<div class=et>${Object.keys(EM
 function epk(ev){ev.stopPropagation();const o=$('#ep');if(o)return o.remove();const d=document.createElement('div');d.id='ep';d.onclick=e=>e.stopPropagation();$('#main').append(d);epd()}
 const ins=e=>{const i=$('#in'),a=i.selectionStart??i.value.length;i.setRangeText(e,a,i.selectionEnd??a,'end');i.focus()};
 addEventListener('click',()=>{const o=$('#ep');if(o)o.remove()});
-const total=()=>Object.values(unread).reduce((a,b)=>a+b,0),bimg=new Image();bimg.src='icon.png';
+const total=()=>Object.values(unread).reduce((a,b)=>a+b,0),bimg=new Image();bimg.src='icon.ico';
 function badge(){const n=total(),t=n>9?'9+':String(n);document.title=n?`Master Debate (${n})`:'Master Debate';if(!window.api||!window.api.badge)return;
   const mk=z=>{const c=document.createElement('canvas');c.width=c.height=z;return[c,c.getContext('2d')]};
   const dot=(x,cx,cy,r,f)=>{x.fillStyle='#f23f42';x.beginPath();x.arc(cx,cy,r,0,7);x.fill();x.fillStyle='#fff';x.font=`bold ${f}px sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,cx,cy+1)};

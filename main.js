@@ -31,7 +31,7 @@ ipcMain.on('badge',(e,b)=>{if(!tray||!win)return;tray.setToolTip(b.n?`Master Deb
 app.on('before-quit',()=>{quitting=true});
 if(!app.requestSingleInstanceLock())app.quit();
 app.on('second-instance',()=>win&&show());
-app.whenReady().then(()=>{session.defaultSession.setPermissionRequestHandler((wc,p,cb)=>cb(['media','notifications'].includes(p)));const icon=path.join(__dirname,'icon.png');
+app.whenReady().then(()=>{session.defaultSession.setPermissionRequestHandler((wc,p,cb)=>cb(['media','notifications'].includes(p)));const icon=path.join(__dirname,'icon.ico');
   win=new BrowserWindow({width:1000,height:680,show:!process.argv.includes('--hidden'),icon,backgroundColor:'#16171a',autoHideMenuBar:true,
     webPreferences:{preload:path.join(__dirname,'preload.js')}});
   win.loadFile('index.html');
