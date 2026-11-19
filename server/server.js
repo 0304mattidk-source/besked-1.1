@@ -31,7 +31,7 @@ function ensureProf(x){if(!x.profiles||!x.profiles.length){const p={id:id(),name
 const syncProf=x=>{ensureProf(x);Object.assign(x.profiles.find(q=>q.id==x.active)||x.profiles[0],pfOf(x))};
 const addScore=(u,n)=>{const x=db.users[u],t=Date.now();if(!x||t-(x.st||0)<3000)return;x.st=t;x.score=(x.score||0)+n};
 function leaveCall(u,rid){const s=calls.get(rid);if(!s||!s.delete(u))return;const r=db.rooms[rid];if(!s.size)calls.delete(rid);if(r)cast(r,{t:'callstate',room:rid,users:[...s]})}
-const BOT='Gemini',AIK=(process.env.GEMINI_API_KEY||'').trim(),AIM=(process.env.GEMINI_MODEL||'gemini-3.5-flash').trim(),AIFB=(process.env.GEMINI_FALLBACK||'gemini-3.6-flash,gemini-2.5-flash').split(',').map(x=>x.trim()).filter(Boolean),AIURL=process.env.GEMINI_BASE||'https://generativelanguage.googleapis.com',AIRPM=+process.env.AI_RPM||8;
+const BOT='Gemini',AIK=(process.env.GEMINI_API_KEY||'').trim(),AIM=(process.env.GEMINI_MODEL||'gemini-3.8-flash').trim(),AIFB=(process.env.GEMINI_FALLBACK||'gemini-3.7-flash,gemini-3.6-flash,gemini-3.5-flash').split(',').map(x=>x.trim()).filter(Boolean),AIURL=process.env.GEMINI_BASE||'https://generativelanguage.googleapis.com',AIRPM=+process.env.AI_RPM||8;
 const NOKEY='Gemini er ikke sat op endnu – en administrator skal tilføje GEMINI_API_KEY på serveren.';
 const PERS={
 gangster:{n:'Gangster',e:'😎',sys:'Du er Gemini, en AI-ven med gangster-attitude. Skriv på dansk gadesprog med gangster-slang (yo, bro, bror, wallah, respekt, mand), vær selvsikker og kæk, men venlig og hjælpsom. Ingen grove ord. Hold svar korte (1-4 sætninger).',rate:'Yo bro, jeg er løbet tør for gas 💨 – min token er rate limited lige nu. Giv mig et øjeblik, så er jeg tilbage på gaden, wallah.',fail:'Av bror, noget gik skidt hos mig 😤 Prøv igen om lidt, respekt.'},
@@ -52,12 +52,14 @@ async function gcall(model,sys,text,full){const body={systemInstruction:{parts:[
   if(full){body.safetySettings=SAFE;if(/^gemini-3/.test(model))body.generationConfig={thinkingConfig:{thinkingLevel:'low'}}}
   const r=await fetch(`${AIURL}/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(20000),headers:{'Content-Type':'application/json','x-goog-api-key':AIK},body:JSON.stringify(body)});
   return{status:r.status,j:await r.json().catch(()=>({}))}}
-async function gemini(sys,text){if(!AIK)return{err:'nokey',msg:'GEMINI_API_KEY mangler på serveren'};let rate=false,last='';
-  for(const m of[AIM,...AIFB.filter(x=>x!=AIM)]){for(const full of[1,0]){let o;try{o=await gcall(m,sys,text,full)}catch(e){last=m+': '+(e.name=='TimeoutError'?'timeout':e.message);break}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function gemini(sys,text){if(!AIK)return{err:'nokey',msg:'GEMINI_API_KEY mangler på serveren'};let rate=false;const errs=[];
+  for(const m of[AIM,...AIFB.filter(x=>x!=AIM)]){for(const full of[1,0]){let o;
+    try{for(let k=0;k<2;k++){o=await gcall(m,sys,text,full);if(![500,502,503].includes(o.status))break;await sleep(1500)}}catch(e){errs.push(m+': '+(e.name=='TimeoutError'?'timeout':e.message));break}
     const t=gtext(o.j);if(t)return{text:t.slice(0,1500)};if(o.status==429)rate=true;
-    last=`${m}: ${o.status} ${(o.j.error&&o.j.error.message)||(o.j.promptFeedback&&'blokeret: '+o.j.promptFeedback.blockReason)||(o.j.candidates&&o.j.candidates[0]&&'stop: '+o.j.candidates[0].finishReason)||''}`.slice(0,300);
+    errs.push(`${m}: ${o.status} ${(o.j.error&&o.j.error.message)||(o.j.promptFeedback&&'blokeret: '+o.j.promptFeedback.blockReason)||(o.j.candidates&&o.j.candidates[0]&&'stop: '+o.j.candidates[0].finishReason)||''}`.slice(0,220));
     if(o.status!=400)break}}
-  aiLast={t:Date.now(),msg:last};console.error('Gemini-fejl:',last);return{err:rate?'rate':'fail',msg:last}}
+  const last=errs.join(' → ').slice(0,900);aiLast={t:Date.now(),msg:last};console.error('Gemini-fejl:',last);return{err:rate?'rate':'fail',msg:last}}
 const persOf=x=>x.persona=='custom'&&x.cp?{sys:'Du er Gemini, en AI-ven i en chatapp. Skriv på dansk, medmindre brugeren skriver på et andet sprog, og hold svar korte. Din personlighed og stil, som brugeren selv har beskrevet: '+x.cp,rate:x.cr||PERS.neutral.rate,fail:PERS.neutral.fail}:(PERS[x.persona]||PERS.gangster);
 const aiMsg=(p,o)=>o.text||(o.err=='rate'?p.rate:o.err=='nokey'?NOKEY:p.fail);
 async function botReply(r,u){if(busy.has(r.id))return;busy.add(r.id);const P=persOf(db.users[u]),tell=()=>r.members.forEach(x=>x!=BOT&&to(x,{t:'typing',room:r.id,u:BOT})),iv=setInterval(tell,1500);tell();

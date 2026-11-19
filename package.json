@@ -23,7 +23,9 @@
    "preload.js",
    "index.html",
    "icons.js",
+   "changelog.js",
    "icon.png",
+   "update-banner.jpg",
    "package.json"
   ],
   "win": {
