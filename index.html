@@ -72,6 +72,14 @@ body.nomo *,body.nomo *::before{animation:none!important;transition:none!importa
 .po{position:relative;display:flex;justify-content:space-between;gap:10px;padding:7px 10px;border:1px solid var(--bd);border-radius:10px;margin-top:6px;cursor:pointer;overflow:hidden}.po i{position:absolute;inset:0 auto 0 0;background:color-mix(in srgb,var(--a) 28%,transparent)}.po span,.po b{position:relative}.po.on{border-color:var(--a)}
 .pinb{opacity:0;cursor:pointer;color:var(--m);display:flex}.it:hover .pinb,.pinb.on{opacity:1}.pinb.on{color:var(--a)}.it.pinned{box-shadow:inset 3px 0 var(--a)}
 .sk{font-size:12px;margin-left:4px;font-weight:600}[style*="--pl"] small{color:#e5e5e5}[style*="--pl"] .i{color:#fff}.spin2{width:36px;height:36px;border:4px solid var(--g);border-top-color:var(--a);border-radius:50%;animation:sp .9s linear infinite;margin:10px auto}
+.box.xl{width:580px;padding:0;overflow:hidden}.pcx{position:relative}.pcx .pb{height:170px;border-radius:0}.pclose{position:absolute;top:10px;right:10px;background:#0007;color:#fff}.pbody{padding:0 28px 26px}.pav{margin-top:-46px;width:92px;margin-bottom:12px}.pname b{font-size:24px;display:block}.pname small{font-size:14px}
+.mn{color:#4da3ff;background:rgba(77,163,255,.15);border-radius:5px;padding:0 3px;cursor:pointer;font-weight:600}.mn:hover{background:rgba(77,163,255,.3)}.mn.me{background:rgba(88,101,242,.4)}
+.pvc{border:1px solid var(--bd);border-radius:14px;overflow:hidden;background:var(--bg)}.pvc .pb{height:90px}.pbody2{display:flex;align-items:flex-end;gap:12px;padding:0 14px 8px;margin-top:-26px}.pbody2>div:last-child{display:flex;flex-direction:column;padding-bottom:2px}
+.pvm{display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--bd);margin:4px 0}
+#vc{position:fixed;inset:0;z-index:15;background:#0b0b0e;display:flex;flex-direction:column}.vg{flex:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px;padding:14px;position:relative;align-content:center}
+.vt{position:relative;background:#18181d;border-radius:16px;overflow:hidden;min-height:200px;display:flex;align-items:center;justify-content:center}.vt video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vt .ph{position:relative}
+.vn{position:absolute;left:10px;bottom:8px;background:#0008;color:#fff;padding:2px 8px;border-radius:8px;font-size:12px}
+.vg.two{display:block}.vg.two .vt:not(.me){position:absolute;inset:14px}.vg.two .vt.me{position:absolute;right:28px;bottom:28px;width:200px;height:140px;min-height:0;z-index:2}.vbar{display:flex;gap:10px;justify-content:center;padding:14px}
 body.compact .m.f{margin-top:6px}body.compact .m{padding:0 22px}
 </style>
 <body>
@@ -87,7 +95,7 @@ let typers={},lt=0;const RE=['👍','❤️','😂','😮','😢','🔥'];docume
 let ws,S=null,cur=null,tab='chats',code='',off=0,unread={},sel='none';
 const DECOS={none:'Ingen',gold:'Guld',rainbow:'Regnbue',neon:'Neon',fire:'Ild',ice:'Is',toxic:'Gift',sakura:'Sakura',galaxy:'Galakse'};
 const P=n=>S.people[n]||{emoji:'?',color:'#555',deco:'none'};
-const av=(p,dot)=>`<div class="avw d-${esc(p.deco)}"><div class=av style="background:${esc(p.color)}">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.emoji)}" referrerpolicy=no-referrer onerror="this.replaceWith(this.alt)">`:esc(p.emoji)}</div>${dot?`<i class="${p.online?'on':''}"></i>`:''}</div>`;
+const av=(p,dot,z)=>`<div class="avw d-${esc(p.deco)}"${z?` style="width:${z}px;height:${z}px"`:''}><div class=av style="background:${esc(p.color)}${z?`;font-size:${Math.round(z/2)}px`:''}">${p.img?`<img src="${esc(p.img)}" alt="${esc(p.emoji)}" referrerpolicy=no-referrer onerror="this.replaceWith(this.alt)">`:esc(p.emoji)}</div>${dot?`<i class="${p.online?'on':''}"></i>`:''}</div>`;
 const err=t=>document.querySelectorAll('.err').forEach(x=>x.textContent=t||'');
 const show=id=>{['boot','lock','login','app'].forEach(x=>$('#'+x).style.display=x==id?'flex':'none');$('#corner').style.display=id=='app'?'none':'flex';$('#lo').style.display=id=='lock'?'':'none'};
 const tx=o=>ws&&ws.readyState==1&&ws.send(JSON.stringify(o));
@@ -125,6 +133,7 @@ function on(m){
   else if(m.t=='score'){if(S&&S.people[m.u])S.people[m.u].score=m.score;if(S&&m.u==S.me.name){S.me.score=m.score;const e=$('#sc');if(e)e.textContent=`${lvl(m.score)} · ${m.score} point`}}
   else if(m.t=='sig')onSig(m)
   else if(m.t=='callstate')callState(m)
+  else if(m.t=='ailog'){const L=JSON.parse(localStorage.gemlog||'[]');L.push({t:Date.now(),k:m.kind,msg:m.msg,model:m.model});localStorage.gemlog=JSON.stringify(L.slice(-100))}
   else if(m.t=='streak'){const r=S&&room(m.room);if(r){r.sk=m.sk;if(cur==m.room)render();else list()}}
   else if(m.t=='token'){localStorage.tok=m.token;toast('Auto-login er slået til')}
   else if(m.t=='state'){S=m;auto=0;localStorage.user=m.me.name;$('#pw').value=$('#code').value=$('#ic').value='';err();off=m.now-Date.now();if(cur&&!room(cur))cur=null;show('app');render()}
@@ -154,7 +163,7 @@ function side(){$('#side').innerHTML=`<div class=brand>${ico('message-circle',28
 <div class=sch>${ico('search',16)}<input placeholder="Søg i samtaler" value="${esc(q)}" oninput="q=this.value;list()"></div>
 <div class=seg><button class="${tab=='chats'?'on':''}" onclick="tab='chats';render()">${ico('message-circle',18)}Chats</button><button class="${tab=='friends'?'on':''}" onclick="tab='friends';render()">${ico('users',18)}Venner${S.incoming.length?`<span class=bd>${S.incoming.length}</span>`:''}</button></div>
 <div class=list id=rl>${rooms()}</div>
-<div class=me><div class=row style="flex:1;min-width:0;cursor:pointer;margin:0;${pl(S.me)}" title="Skift profil" onclick=profilesUI()>${av(S.me,1)}<div class=tt><b>${esc(S.me.name)}</b><small id=sc>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div><button class=ib title="Indstillinger" onclick=settings()>${ico('settings',20)}</button><button class=ib title="Log ud" onclick=logout()>${ico('log-out',20)}</button></div>`}
+<div class=me style="${pl(S.me)}"><div class=row style="flex:1;min-width:0;cursor:pointer;margin:0" title="Skift profil" onclick=profilesUI()>${av(S.me,1)}<div class=tt><b>${esc(S.me.name)}</b><small id=sc>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div><button class=ib title="Indstillinger" onclick=settings()>${ico('settings',20)}</button><button class=ib title="Log ud" onclick=logout()>${ico('log-out',20)}</button></div>`}
 function main(){const el=$('#main'),d=$('#in')?$('#in').value:'';
 if(tab=='friends'){el.innerHTML=`<div class=pad><h2>Venner</h2><div class=card><b>Tilføj ven</b><div class=row><input id=fn placeholder="Brugernavn" onkeydown="event.key=='Enter'&&addF()"><button onclick=addF()>${ico('circle-plus',18)}Send</button></div></div>
 ${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it card" style="${pl(P(n))}">${av(P(n))}<div class=tt><b>${esc(n)}</b><small>vil være din ven</small></div><button onclick="tx({t:'accept',name:'${esc(n)}'})">${ico('circle-check',18)}Acceptér</button><button class=g onclick="tx({t:'decline',name:'${esc(n)}'})">Afvis</button></div>`).join(''):''}
@@ -162,13 +171,13 @@ ${S.incoming.length?'<h3>Anmodninger</h3>'+S.incoming.map(n=>`<div class="it car
 const r=cur&&room(cur);
 if(!r){el.innerHTML=`<div class=empty>${ico('message-circle',96)}<h2>Vælg en samtale</h2><small>Eller tilføj en ven under Venner</small></div>`;return}
 const i=rinfo(r);
-el.innerHTML=`<div class=hd><span class=pl onclick="prof('${esc(i.n)}')">${av(i.p,!i.g)}</span><div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${skH(r)}<button class=ib title="Ring op (stemme)" onclick="joinCall(cur)">${ico('phone',20)}</button><button class=ib title="Gemte beskeder" onclick=savedM()>${ico('bookmarks',20)}</button>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div><div id=rb></div>
+el.innerHTML=`<div class=hd><span class=pl onclick="prof('${esc(i.n)}')">${av(i.p,!i.g)}</span><div class=tt><b>${esc(i.n)}</b><small>${i.g?r.members.map(esc).join(', '):P(i.n).online?'Online':'Offline'}</small></div>${skH(r)}<button class=ib title="Ring op (stemme)" onclick="joinCall(cur)">${ico('phone',20)}</button><button class=ib title="Videoopkald (FaceTime)" onclick="joinCall(cur,1)">${ico('video',20)}</button><button class=ib title="Gemte beskeder" onclick=savedM()>${ico('bookmarks',20)}</button>${i.g?`<button class=ib title="Rediger gruppe" onclick=editG()>${ico('pencil',20)}</button><button class=ib title="Forlad gruppe" onclick=leave()>${ico('log-out',20)}</button>`:''}</div><div id=msgs></div><div class=ty id=ty></div><div id=rb></div>
 <div class=comp><button class=ib title="Vedhæft fil" onclick="$('#fi').click()">${ico('paperclip',22)}</button><button class=ib title="Ny afstemning" onclick=pollM()>${ico('poll',22)}</button><button class=ib title="Tag billede med kamera" onclick=cam()>${ico('camera',22)}</button><button class=ib id=mic title="Indtal talebesked" onclick=recToggle()>${ico('mic',22)}</button><button class=ib id=micx title="Annullér" onclick="recStop(0)" hidden>${ico('circle-x',22)}</button><button class=ib title="Emoji" onclick="epk(event)">${ico('smile',22)}</button><input id=in placeholder="Skriv en besked til ${esc(i.n)}" autocomplete=off oninput=typ() onkeydown="if(event.key=='Enter')sendMsg()"><button title="Send" onclick=sendMsg()>${ico('send',20)}</button><input type=file id=fi hidden onchange="attach(this.files[0]);this.value=''"></div>`;
 $('#in').value=d;$('#in').focus();msgs();rbar()}
 function msgs(){const r=room(cur),b=$('#msgs');if(!r||!b)return;const nb=b.scrollHeight-b.scrollTop-b.clientHeight<80;let pu='',pt=0;
 b.innerHTML=r.messages.map(m=>{const f=m.file,img=f&&/^data:image\/(png|jpe?g|gif|webp);/.test(f.data),first=m.u!=pu||m.ts-pt>3e5;pu=m.u;pt=m.ts;
 return`<div class="m ${first?'f':''}">${first?`<span class=pl onclick="prof('${esc(m.u)}')">${av(P(m.u))}</span>`:'<div class=sp></div>'}<div class=mb>${first?`<b class=pl onclick="prof('${esc(m.u)}')">${esc(m.u)}</b> <small>${T(m.ts)}</small>`:''}${m.keep?`<small title="Gemt – slettes ikke"> ${ico('bookmark',14)}</small>`:''}${m.exp&&!m.keep&&m.exp-m.ts<864e5?`<small title="Slettes automatisk"> ${ico('clock',14)}</small>`:''}${m.edited?'<small> (redigeret)</small>':''}
-${m.rp?`<div class=rq>${esc(m.rp.u)}: ${esc(m.rp.text)}</div>`:''}${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${m.poll?pollH(m):''}${f&&/^data:audio\//.test(f.data)?`<audio controls src="${esc(f.data)}"></audio>`:f?img?`<img class=im src="${esc(f.data)}" onclick="lb(this.src)">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">${ico('paperclip',16)}${esc(f.name)}</a>`:''}
+${m.rp?`<div class=rq>${esc(m.rp.u)}: ${esc(m.rp.text)}</div>`:''}${m.text?`<div class=tx>${mention(m.text)}</div>`:''}${m.poll?pollH(m):''}${f&&/^data:audio\//.test(f.data)?`<audio controls src="${esc(f.data)}"></audio>`:f?img?`<img class=im src="${esc(f.data)}" onclick="lb(this.src)">`:`<a class=fl href="${esc(f.data)}" download="${esc(f.name)}">${ico('paperclip',16)}${esc(f.name)}</a>`:''}
 <div class=rx>${Object.entries(m.r||{}).map(([e,a])=>`<span class="${a.includes(S.me.name)?'on':''}" title="${esc(a.join(', '))}" oncontextmenu="event.preventDefault();whoM('${m.id}')" onclick="react('${m.id}','${e}')">${esc(e)} ${a.length}</span>`).join('')}</div>
 <div class=act><span title="Svar" onclick="replyTo('${m.id}')">${ico('reply',16)}</span><span title="${m.keep?'Fjern fra gemte':'Gem besked'}" onclick="tx({t:'keep',room:cur,id:'${m.id}'})">${ico('bookmark',16)}</span>${RE.map(e=>`<span onclick="react('${m.id}','${e}')">${e}</span>`).join('')}${m.u!=S.me.name?`<span title="Anmeld" onclick="reportM('${m.id}')">${ico('flag',16)}</span>`:''}${m.u==S.me.name?`<span title="Rediger" onclick="editM('${m.id}')">${ico('pencil',16)}</span><span title="Slet" onclick="tx({t:'delmsg',room:cur,id:'${m.id}'})">${ico('trash',16)}</span>`:''}</div></div></div>`}).join('');
 if(nb)b.scrollTop=b.scrollHeight}
@@ -185,8 +194,8 @@ const SEL=(o,c,f)=>`<select onchange="${f}(this.value)">${o.map(([v,t])=>`<optio
 const TOG=(on,f,id)=>`<label class=tg><input ${id?`id=${id} `:''}type=checkbox${on?' checked':''} onchange="${f}(this.checked)"><i></i></label>`;
 const ROW=(ic,t,d,c)=>`<div class=sr>${ic?ico(ic,22):''}<div class=tt><b>${t}</b>${d?`<small>${d}</small>`:''}</div>${c}</div>`;
 async function settings(){const ap=window.api&&window.api.getPrefs?await window.api.getPrefs():null;const p=pf(),gon=localStorage.gon=='1';sel=S.me.deco;modal(`<div class=sh><h2>Indstillinger</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
-<h4>Profil</h4><div class=card><div class=row>${av(S.me,0)}<input id=em value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co type=color value="${esc(S.me.color)}"></div>
-<input id=pi placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><input id=pb maxlength=160 placeholder="Kort beskrivelse (maks 160 tegn)" value="${esc(S.me.bio||'')}"><input id=pbn placeholder="Banner-URL (https://…), valgfri" value="${esc(S.me.banner||'')}"><input id=ppl placeholder="Navneskilt – billed/GIF-URL (https://…), valgfri" value="${esc(S.me.plate||'')}"><button class=g onclick="closeM();profilesUI()">Skift eller opret profil</button><small>Avatar-dekoration</small>
+<h4>Profil</h4><div class=card><div id=pv></div><div class=row>${av(S.me,0)}<input id=em oninput=pvUpd() value="${esc(S.me.emoji)}" maxlength=4 style="width:70px"><input id=co oninput=pvUpd() type=color value="${esc(S.me.color)}"></div>
+<input id=pi oninput=pvUpd() placeholder="Billed- eller GIF-URL (https://…), valgfri" value="${esc(S.me.img||'')}"><input id=pb oninput=pvUpd() maxlength=160 placeholder="Kort beskrivelse (maks 160 tegn)" value="${esc(S.me.bio||'')}"><input id=pbn oninput=pvUpd() placeholder="Banner-URL (https://…), valgfri" value="${esc(S.me.banner||'')}"><input id=ppl oninput=pvUpd() placeholder="Navneskilt – billed/GIF-URL (https://…), valgfri" value="${esc(S.me.plate||'')}"><button class=g onclick="closeM();profilesUI()">Skift eller opret profil</button><small>Avatar-dekoration</small>
 <div class="row pk">${Object.entries(DECOS).map(([k,v])=>`<div class=pick data-k=${k} onclick="sel='${k}';markSel()">${av({img:S.me.img,emoji:S.me.emoji,color:S.me.color,deco:k})}<small>${v}</small></div>`).join('')}</div><button onclick=saveS()>Gem profil</button></div>
 <h4>Udseende</h4><div class=card>
 ${ROW('palette','Tema','',SEL([['','Mørk'],['midnight','Midnat'],['light','Lys']],p.theme||'','sTheme'))}
@@ -197,7 +206,9 @@ ${ROW('sliders','Animationer','Ringe, overgange og effekter',TOG(p.motion!==0,'t
 ${ROW('image','Gradient-baggrund','Farver bag appens paneler',TOG(gon,'tGon','gt'))}
 <div class="row gr"><input type=color id=g1 value="${localStorage.g1||'#5865f2'}" oninput=setBg()><input type=color id=g2 value="${localStorage.g2||'#eb459e'}" oninput=setBg()><input type=range id=ga min=0 max=360 value="${localStorage.ga||135}" oninput=setBg()>${SEL([['','Egne farver'],['sun','Solnedgang'],['sea','Hav'],['night','Natskygge']],'','sPre')}</div></div>
 <h4>AI</h4><div class=card>
-${ROW('sparkle','Gemini-personlighed','Gælder i chatten med Gemini og når den nævnes i grupper',SEL(S.ai.list.map(x=>[x.id,x.e+' '+x.n]),S.me.persona||'gangster','sPers'))}
+${ROW('sparkle','Gemini-personlighed','Gælder i chatten med Gemini og når den nævnes i grupper',SEL([...S.ai.list.map(x=>[x.id,x.e+' '+x.n]),['custom','✏️ Egen personlighed']],S.me.persona||'gangster','sPers'))}
+${S.me.persona=='custom'?ROW('sparkle','Din egen personlighed',esc((S.me.cp||'').slice(0,70)),`<button class=g onclick=customUI()>Rediger</button>`):''}
+${ROW('sliders','Gemini-log','Fejl fra Gemini. Slettes, når appen åbnes',`<button class=g onclick=gemLog()>Åbn</button>`)}
 ${S.ai.on?'':'<small>Gemini er ikke sat op på serveren endnu. En administrator skal tilføje GEMINI_API_KEY.</small>'}</div>
 <h4>Beskeder</h4><div class=card>
 ${ROW('bell','Notifikationer','Når appen ikke er i fokus',TOG(p.notif!==0,'tNotif'))}
@@ -215,7 +226,7 @@ ${ROW('lock','Lås appen nu','Genvej: Ctrl+L',`<button class=g onclick=lock()>L�
 ${ROW('trash','Slet alle chats','Sletter hos alle. Genvej: Ctrl+Alt+Shift+X',`<button class=r onclick="if(confirm('Slet alle chats for alle?'))tx({t:'wipe'})">Slet</button>`)}
 ${ROW('server','Server',esc(srv),`<button class=g onclick="closeM();adv()">Skift</button>`)}
 ${ROW('log-out','Log ud','',`<button class=g onclick=logout()>Log ud</button>`)}</div>`,'wide');markSel()}
-const markSel=()=>document.querySelectorAll('.pick').forEach(x=>x.classList.toggle('on',x.dataset.k==sel));
+const markSel=()=>{document.querySelectorAll('.pick').forEach(x=>x.classList.toggle('on',x.dataset.k==sel));pvUpd()};
 const saveS=()=>{tx({t:'profile',plate:$('#ppl').value,bio:$('#pb').value,banner:$('#pbn').value,img:$('#pi').value,emoji:$('#em').value,color:$('#co').value,deco:sel});toast('Profil gemt')};
 const sTheme=v=>setPf('theme',v),sAcc=v=>setPf('accent',v),sFont=v=>setPf('font',v),tCompact=v=>setPf('compact',v?1:0),tMotion=v=>setPf('motion',v?1:0),tNotif=v=>setPf('notif',v?1:0),tSound=v=>setPf('sound',v?1:0),sTtl=v=>tx({t:'profile',ttl:+v});
 const tGon=v=>{if(v&&!hx(localStorage.g1)){localStorage.g1='#5865f2';localStorage.g2='#eb459e'}localStorage.gon=v?'1':'0';applyBg()};
@@ -230,7 +241,7 @@ const epd=()=>{const d=$('#ep');if(d)d.innerHTML=`<div class=et>${Object.keys(EM
 function epk(ev){ev.stopPropagation();const o=$('#ep');if(o)return o.remove();const d=document.createElement('div');d.id='ep';d.onclick=e=>e.stopPropagation();$('#main').append(d);epd()}
 const ins=e=>{const i=$('#in'),a=i.selectionStart??i.value.length;i.setRangeText(e,a,i.selectionEnd??a,'end');i.focus()};
 addEventListener('click',()=>{const o=$('#ep');if(o)o.remove()});
-const total=()=>Object.values(unread).reduce((a,b)=>a+b,0),bimg=new Image();bimg.src='icon.ico';
+const total=()=>Object.values(unread).reduce((a,b)=>a+b,0),bimg=new Image();bimg.src='icon.png';
 function badge(){const n=total(),t=n>9?'9+':String(n);document.title=n?`Master Debate (${n})`:'Master Debate';if(!window.api||!window.api.badge)return;
   const mk=z=>{const c=document.createElement('canvas');c.width=c.height=z;return[c,c.getContext('2d')]};
   const dot=(x,cx,cy,r,f)=>{x.fillStyle='#f23f42';x.beginPath();x.arc(cx,cy,r,0,7);x.fill();x.fillStyle='#fff';x.font=`bold ${f}px sans-serif`;x.textAlign='center';x.textBaseline='middle';x.fillText(t,cx,cy+1)};
@@ -250,8 +261,9 @@ const resetPw=n=>modal(`<h3>Ny adgangskode til ${esc(n)}</h3><input id=np type=p
 window.api?.onUpd(v=>{if(v=='fejl'){sessionStorage.skipup=1;location.reload()}else{$('#bt').textContent='App opdaterer…'+(typeof v=='number'?' '+v+'%':'');const u=$('#upp');if(u&&typeof v=='number')u.textContent=v+'%'}});
 const LV=[[0,'Nybegynder'],[100,'Debattant'],[500,'Retoriker'],[1500,'Mester'],[5000,'Stormester']],lvl=s=>LV.filter(l=>(s||0)>=l[0]).at(-1)[1];
 function prof(n){const p=S&&S.people[n];if(!p)return;const me=n==S.me.name,fr=S.friends.includes(n);
-modal(`<div class=pc><div class=pb ${p.banner?`style="background-image:url('${esc(p.banner)}')"`:''}></div><div style="padding:0 20px"><div class=pp>${av(p,0)}<div class=tt style="padding-bottom:4px"><b style="font-size:18px">${esc(n)}</b><small>${lvl(p.score)} · ${p.score||0} point</small></div></div>
-<p style="white-space:pre-wrap">${esc(p.bio||'Ingen beskrivelse endnu.')}</p><div class=row>${me?`<button class=g onclick="closeM();settings()">Rediger profil</button>`:fr?`<button onclick="closeM();dm('${esc(n)}')">${ico('send',18)}Skriv</button>`:`<button onclick="tx({t:'friend',name:'${esc(n)}'});closeM()">${ico('circle-plus',18)}Tilføj ven</button>`}<button class=g onclick=closeM()>Luk</button></div></div></div>`)}
+modal(`<div class=pcx><div class=pb style="${p.banner?`background-image:url('${esc(p.banner)}')`:''}"></div><button class="ib pclose" onclick=closeM()>${ico('circle-x',24)}</button>
+<div class=pbody><div class=pav>${av(p,0,92)}</div><div class=pname><b>${esc(n)}</b><small>${lvl(p.score)} · ${p.score||0} point</small></div>
+<p style="white-space:pre-wrap;margin:14px 0">${esc(p.bio||'Ingen beskrivelse endnu.')}</p><div class=row>${me?`<button class=g onclick="closeM();settings()">Rediger profil</button>`:fr?`<button onclick="closeM();dm('${esc(n)}')">${ico('send',18)}Skriv</button>`:`<button onclick="tx({t:'friend',name:'${esc(n)}'});closeM()">${ico('circle-plus',18)}Tilføj ven</button>`}<button class=g onclick=closeM()>Luk</button></div></div></div>`,'xl')}
 function profilesUI(){modal(`<div class=sh><h2>Mine profiler</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div>
 ${(S.me.profiles||[]).map(p=>`<div class="it ${p.id==S.me.active?'sel':''}" onclick="tx({t:'profswitch',id:'${p.id}'});closeM()">${av(p,0)}<div class=tt><b>${esc(p.name)}</b><small>${esc(p.bio||'Ingen beskrivelse')}</small></div>${p.id==S.me.active?'<small>Aktiv</small>':`<button class=ib title="Slet" onclick="event.stopPropagation();tx({t:'profdel',id:'${p.id}'});closeM()">${ico('trash',18)}</button>`}</div>`).join('')}
 <h4>Ny profil</h4><div class=row><input id=pn placeholder="Navn, fx Seriøs"><button onclick="tx({t:'profnew',name:$('#pn').value});closeM()">Opret</button></div><small>Den nye profil starter som en kopi af den aktive. Redigér den under ⚙ → Profil.</small>`)}
@@ -269,11 +281,13 @@ mr.onstop=()=>{st.getTracks().forEach(t=>t.stop());const send=rec&&rec.send,room
 if(send){const b=new Blob(ch,{type:'audio/webm'});if(b.size>1.5e6)return toast('Talebeskeden er for lang');const rd=new FileReader();rd.onload=()=>tx({t:'msg',room,text:'',file:{name:'Talebesked.webm',data:rd.result}});rd.readAsDataURL(b)}};
 rec={mr,t0:Date.now()};mr.start();rec.tm=setInterval(()=>{recUI();if(Date.now()-rec.t0>120000)recStop(1)},500);recUI()}catch{toast('Mikrofon blev ikke fundet eller er ikke tilladt')}}
 const recStop=send=>{if(rec){rec.send=send;rec.mr.stop()}},recToggle=()=>rec?recStop(1):recStart();
-async function joinCall(room){if(call)return toast('Du er allerede i et opkald');let st;try{st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}})}catch{return toast('Mikrofon blev ikke fundet eller er ikke tilladt')}
-call={room,pcs:{},aud:{},stream:st,muted:false};ign[room]=0;tx({t:'calljoin',room});callbar()}
-function mkpc(peer){const pc=new RTCPeerConnection({iceServers:S.ice});call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));
+async function joinCall(room,video){if(call)return toast('Du er allerede i et opkald');let st;
+try{st=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true},video:video?{width:{ideal:640},height:{ideal:480},facingMode:'user'}:false})}
+catch{if(video){try{st=await navigator.mediaDevices.getUserMedia({audio:true});toast('Kameraet kunne ikke bruges – du deltager kun med lyd')}catch{}}if(!st)return toast('Mikrofon blev ikke fundet eller er ikke tilladt')}
+const vt=st.getVideoTracks().length>0;call={room,pcs:{},vid:{},tiles:{},stream:st,muted:false,vt,on:vt};ign[room]=0;tx({t:'calljoin',room});callbar();vcRender()}
+function mkpc(peer){const pc=new RTCPeerConnection({iceServers:S.ice});call.stream.getTracks().forEach(t=>pc.addTrack(t,call.stream));if(!call.vt)pc.addTransceiver('video',{direction:'recvonly'});
 pc.onicecandidate=e=>e.candidate&&tx({t:'sig',room:call.room,to:peer,data:{c:e.candidate}});
-pc.ontrack=e=>{let a=call.aud[peer];if(!a){a=call.aud[peer]=new Audio();a.autoplay=true}a.srcObject=e.streams[0]};call.pcs[peer]=pc;return pc}
+pc.ontrack=e=>{if(call){call.vid[peer]=e.streams[0];vcRender()}};call.pcs[peer]=pc;return pc}
 async function offer(peer){if(!call)return;const pc=mkpc(peer);await pc.setLocalDescription(await pc.createOffer());tx({t:'sig',room:call.room,to:peer,data:{o:pc.localDescription}})}
 function onSig(m){if(!S||!call||call.room!=m.room)return;const pc=call.pcs[m.from]||mkpc(m.from);
 pc.q=(pc.q||Promise.resolve()).then(async()=>{const d=m.data;
@@ -281,13 +295,23 @@ if(d.o){await pc.setRemoteDescription(d.o);await pc.setLocalDescription(await pc
 else if(d.a)await pc.setRemoteDescription(d.a);else if(d.c)await pc.addIceCandidate(d.c)}).catch(()=>{})}
 function callState(m){if(!S)return;S.calls=S.calls||{};const was=(S.calls[m.room]||[]).length;S.calls[m.room]=m.users;
 if(call&&call.room==m.room){if(m.joiner==S.me.name)m.users.filter(x=>x!=S.me.name).forEach(offer);
-Object.keys(call.pcs).filter(p=>!m.users.includes(p)).forEach(p=>{call.pcs[p].close();delete call.pcs[p];if(call.aud[p])call.aud[p].srcObject=null})}
+Object.keys(call.pcs).filter(p=>!m.users.includes(p)).forEach(p=>{call.pcs[p].close();delete call.pcs[p];delete call.vid[p]});vcRender()}
 else if(!call&&!was&&m.users.length&&!m.users.includes(S.me.name)){beep();setTimeout(beep,450);setTimeout(beep,900)}callbar()}
-function leaveCall(q){if(!call)return;Object.values(call.pcs).forEach(p=>p.close());Object.values(call.aud).forEach(a=>a.srcObject=null);call.stream.getTracks().forEach(t=>t.stop());if(!q)tx({t:'callleave',room:call.room});call=null;callbar()}
-const muteCall=()=>{call.muted=!call.muted;call.stream.getAudioTracks().forEach(t=>t.enabled=!call.muted);callbar()};
+function leaveCall(q){if(!call)return;Object.values(call.pcs).forEach(p=>p.close());call.stream.getTracks().forEach(t=>t.stop());if(!q)tx({t:'callleave',room:call.room});call=null;vcRender();callbar()}
+const muteCall=()=>{call.muted=!call.muted;call.stream.getAudioTracks().forEach(t=>t.enabled=!call.muted);callbar();vcRender()},
+toggleCam=()=>{call.on=!call.on;call.stream.getVideoTracks().forEach(t=>t.enabled=call.on);vcRender()};
+function vcRender(){let o=$('#vc');if(!call){if(o)o.remove();return}
+if(!(call.vt||Object.values(call.vid).some(s=>s&&s.getVideoTracks().length))){if(o)o.remove();return}
+if(!o){o=document.createElement('div');o.id='vc';o.innerHTML='<div class=vg></div><div class=vbar></div>';document.body.append(o);call.tiles={}}
+const g=o.querySelector('.vg'),want=['me',...new Set([...Object.keys(call.pcs),...Object.keys(call.vid)])];
+Object.keys(call.tiles).filter(k=>!want.includes(k)).forEach(k=>{call.tiles[k].remove();delete call.tiles[k]});
+want.forEach(k=>{let t=call.tiles[k];if(!t){t=call.tiles[k]=document.createElement('div');t.className='vt'+(k=='me'?' me':'');t.innerHTML=`<video autoplay playsinline${k=='me'?' muted':''}></video><div class=ph>${av(P(k=='me'?S.me.name:k),0,84)}</div><span class=vn>${esc(k=='me'?'Dig':k)}</span>`;g.append(t)}
+const s=k=='me'?call.stream:call.vid[k],v=t.querySelector('video');if(v.srcObject!==s)v.srcObject=s||null;const has=s&&s.getVideoTracks().length&&(k!='me'||call.on);t.querySelector('.ph').style.display=has?'none':'flex'});
+g.classList.toggle('two',want.length==2);
+o.querySelector('.vbar').innerHTML=`<button class="${call.muted?'r':'g'}" onclick=muteCall()>${ico(call.muted?'mic-off':'mic',20)}${call.muted?'Slå lyd til':'Mute'}</button>${call.vt?`<button class="${call.on?'g':'r'}" onclick=toggleCam()>${ico(call.on?'video':'video-off',20)}${call.on?'Kamera til':'Kamera fra'}</button>`:''}<button class=r onclick=leaveCall()>${ico('phone-x',20)}Læg på</button>`}
 function callbar(){const e=$('#cb');if(!e)return;if(!S){e.innerHTML='';e.style.display='none';return}const C=S.calls||{};
 if(call){const r=room(call.room);e.innerHTML=`<span>${ico('phone',18)} I opkald · ${esc(r?rname(r):'')} · ${(C[call.room]||[]).length}</span><button class=g onclick=muteCall()>${call.muted?'Slå lyd til':'Mute'}</button><button class=r onclick=leaveCall()>Læg på</button>`}
-else e.innerHTML=Object.entries(C).filter(([id,u])=>u.length&&!ign[id]&&room(id)).map(([id,u])=>`<span>${ico('phone',18)} Opkald i ${esc(rname(room(id)))} (${u.map(esc).join(', ')})</span><button onclick="joinCall('${id}')">Deltag</button><button class=g onclick="ign['${id}']=1;callbar()">Ignorér</button>`).join('');
+else e.innerHTML=Object.entries(C).filter(([id,u])=>u.length&&!ign[id]&&room(id)).map(([id,u])=>`<span>${ico('phone',18)} Opkald i ${esc(rname(room(id)))} (${u.map(esc).join(', ')})</span><button onclick="joinCall('${id}')">Deltag</button><button onclick="joinCall('${id}',1)">${ico('video',16)}Med video</button><button class=g onclick="ign['${id}']=1;callbar()">Ignorér</button>`).join('');
 e.style.display=e.innerHTML?'flex':'none'}
 function adminUI(m){lastA=m;const R=m.reports||[],D=t=>new Date(t).toLocaleString([],{dateStyle:'short',timeStyle:'short'});
 const rp=R.map(x=>`<div class=rp><small>${D(x.ts)} · ${esc(x.by)} anmeldte ${esc(x.u)} i ${esc(x.rn)}</small>${x.ctx.map(c=>`<small>${esc(c.u)}: ${esc(c.text)}</small>`).join('')}<div class=tx><b>${esc(x.u)}:</b> ${esc(x.text||'')}</div>${x.file?x.file.img?`<img src="${esc(x.file.img)}">`:`<small>Fil: ${esc(x.file.name)}</small>`:''}${x.reason?`<small>Årsag: ${esc(x.reason)}</small>`:''}<div class=row><button class=r onclick="aop('rdelmsg',{rid:'${x.id}'})">Slet besked</button><button class=g onclick="aop('rdismiss',{rid:'${x.id}'})">Afvis</button><button class=g onclick="aop('kick',{name:'${esc(x.u)}'})">Log bruger ud</button></div></div>`).join('')||'<small>Ingen anmeldelser</small>';
@@ -308,10 +332,18 @@ const whoM=id=>{const m=room(cur).messages.find(x=>x.id==id);if(!m)return;modal(
 const savedM=()=>{const K=room(cur).messages.filter(x=>x.keep);modal(`<div class=sh><h3>Gemte beskeder (${K.length}/10)</h3><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div><small>Gemte beskeder slettes ikke efter 24 timer. Maks. 10 pr. chat og kun ét billede/fil.</small>${K.map(m=>`<div class=rp><small>${esc(m.u)} · ${T(m.ts)}</small>${m.poll?`<b>Afstemning: ${esc(m.poll.q)}</b>`:''}${m.text?`<div class=tx>${esc(m.text)}</div>`:''}${m.file?/^data:image\//.test(m.file.data)?`<img class=im src="${esc(m.file.data)}" onclick="lb(this.src)">`:/^data:audio\//.test(m.file.data)?`<audio controls src="${esc(m.file.data)}"></audio>`:`<small>${esc(m.file.name)}</small>`:''}<div class=row><button class=g onclick="tx({t:'keep',room:cur,id:'${m.id}'});closeM()">Fjern fra gemte</button></div></div>`).join('')||'<p><small>Ingen gemte beskeder endnu. Tryk på bogmærket på en besked for at gemme den.</small></p>'}`)};
 const pl=p=>p&&p.plate?`--pl:1;background-image:linear-gradient(90deg,rgba(0,0,0,.62),rgba(0,0,0,.12)),url('${esc(p.plate)}');background-size:cover;background-position:center;color:#fff`:'';
 const skH=r=>{const s=r&&r.sk;if(!s||!s.n)return'';return`<span class=sk title="${esc('Billed-streak: '+s.n+' dage'+(s.warn?' – send et billede i dag for at beholde den!':''))}">🔥${s.n}${s.warn?'⌛':''}</span>`};
-const sPers=v=>tx({t:'persona',id:v});
+const sPers=v=>v=='custom'?customUI():tx({t:'persona',id:v});
 async function chkUpd(){toast('Søger efter opdatering…');const r=window.api&&window.api.checkUpdate?await window.api.checkUpdate():{s:'dev'};
 if(r.s=='new')modal(`<h3>App opdaterer…</h3><div class=spin2></div><p style="text-align:center">Version ${esc(r.v||'')} hentes og installeres. Appen genstarter selv.<br><b id=upp>0%</b></p>`);
 else toast(r.s=='ok'?`Du har den nyeste version (${r.v})`:r.s=='dev'?'Opdatering virker kun i den installerede app':'Kunne ikke tjekke for opdateringer')}
+localStorage.removeItem('gemlog');
+const mention=t=>esc(t).replace(/@([\w.-]{2,20})/g,(x,n)=>{const k=S&&Object.keys(S.people).find(p=>p.toLowerCase()==n.toLowerCase());return k?`<span class="mn ${k==S.me.name?'me':''}" onclick="prof('${k}')">@${k}</span>`:x});
+function pvUpd(){const e=$('#pv');if(!e)return;const v=i=>($(i)||{}).value||'',ok=u=>!u||/^https:\/\//.test(u),p={emoji:v('#em')||'😀',color:v('#co')||'#5865f2',img:ok(v('#pi'))?v('#pi'):'',deco:sel,plate:ok(v('#ppl'))?v('#ppl'):'',banner:ok(v('#pbn'))?v('#pbn'):'',bio:v('#pb')};
+e.innerHTML=`<small>Sådan ser din profil ud</small><div class=pvc><div class=pb style="${p.banner?`background-image:url('${esc(p.banner)}')`:''}"></div><div class=pbody2>${av(p,0,60)}<div><b>${esc(S.me.name)}</b><small>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div><small style="padding:0 14px 12px;display:block">${esc(p.bio||'Ingen beskrivelse endnu.')}</small></div>
+<small>Dit navneskilt (nederst til venstre i appen)</small><div class=pvm style="${pl(p)}">${av(p,1)}<div class=tt><b>${esc(S.me.name)}</b><small>${lvl(S.me.score)} · ${S.me.score||0} point</small></div></div>`}
+function gemLog(){const L=JSON.parse(localStorage.gemlog||'[]').reverse(),K={rate:'Rate limit',fail:'Fejl',nokey:'Nøgle mangler'};
+modal(`<div class=sh><h2>Gemini-log</h2><button class=ib onclick=closeM()>${ico('circle-x',22)}</button></div><small>Gemmes kun på denne pc og slettes, hver gang appen åbnes.</small>${L.map(x=>`<div class=rp><small>${new Date(x.t).toLocaleString()} · ${esc(K[x.k]||x.k)} · ${esc(x.model||'')}</small><div class=tx>${esc(x.msg||'(ingen detaljer)')}</div></div>`).join('')||'<p><small>Ingen fejl endnu.</small></p>'}<div class=row><button class=g onclick="localStorage.removeItem('gemlog');gemLog()">Ryd log</button></div>`,'wide')}
+function customUI(){modal(`<h3>Din egen Gemini-personlighed</h3><small>Beskriv, hvordan Gemini skal opføre sig og tale, fx "Du er en rolig filosof, der svarer med korte citater".</small><textarea id=cp maxlength=500 rows=5 style="width:100%;background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:10px;color:var(--t);font:inherit;margin:8px 0">${esc(S.me.cp||'')}</textarea><small>Besked når din token er rate limited (valgfri)</small><input id=cr maxlength=200 placeholder="Fx: Jeg er træt, prøv igen om lidt" value="${esc(S.me.cr||'')}"><div class=row><button class=g onclick=closeM()>Annullér</button><button onclick="tx({t:'persona',id:'custom',text:$('#cp').value,rate:$('#cr').value});closeM()">Gem</button></div>`)}
 applyPf();applyBg();document.querySelectorAll('.logo').forEach(e=>e.innerHTML=ico('message-circle',64));$('#lo').innerHTML=ico('log-out',16)+'Log ud';$('#av2').innerHTML=ico('sliders',16)+'Avanceret';boot();
 setInterval(()=>{if(!S)return;const n=Date.now()+off;let c=0;
   S.rooms.forEach(r=>{const l=r.messages.length;r.messages=r.messages.filter(m=>m.keep||(m.ts+864e5>n&&(!m.exp||m.exp>n)));if(r.messages.length!=l&&r.id==cur)c=1});c&&msgs();showTy()},1000);

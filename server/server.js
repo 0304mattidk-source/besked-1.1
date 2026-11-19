@@ -52,16 +52,17 @@ async function gcall(model,sys,text,full){const body={systemInstruction:{parts:[
   if(full){body.safetySettings=SAFE;if(/^gemini-3/.test(model))body.generationConfig={thinkingConfig:{thinkingLevel:'low'}}}
   const r=await fetch(`${AIURL}/v1beta/models/${encodeURIComponent(model)}:generateContent`,{method:'POST',signal:AbortSignal.timeout(20000),headers:{'Content-Type':'application/json','x-goog-api-key':AIK},body:JSON.stringify(body)});
   return{status:r.status,j:await r.json().catch(()=>({}))}}
-async function gemini(sys,text){if(!AIK)return{err:'nokey'};let rate=false,last='';
+async function gemini(sys,text){if(!AIK)return{err:'nokey',msg:'GEMINI_API_KEY mangler på serveren'};let rate=false,last='';
   for(const m of[AIM,...AIFB.filter(x=>x!=AIM)]){for(const full of[1,0]){let o;try{o=await gcall(m,sys,text,full)}catch(e){last=m+': '+(e.name=='TimeoutError'?'timeout':e.message);break}
     const t=gtext(o.j);if(t)return{text:t.slice(0,1500)};if(o.status==429)rate=true;
     last=`${m}: ${o.status} ${(o.j.error&&o.j.error.message)||(o.j.promptFeedback&&'blokeret: '+o.j.promptFeedback.blockReason)||(o.j.candidates&&o.j.candidates[0]&&'stop: '+o.j.candidates[0].finishReason)||''}`.slice(0,300);
     if(o.status!=400)break}}
-  aiLast={t:Date.now(),msg:last};console.error('Gemini-fejl:',last);return{err:rate?'rate':'fail'}}
+  aiLast={t:Date.now(),msg:last};console.error('Gemini-fejl:',last);return{err:rate?'rate':'fail',msg:last}}
+const persOf=x=>x.persona=='custom'&&x.cp?{sys:'Du er Gemini, en AI-ven i en chatapp. Skriv på dansk, medmindre brugeren skriver på et andet sprog, og hold svar korte. Din personlighed og stil, som brugeren selv har beskrevet: '+x.cp,rate:x.cr||PERS.neutral.rate,fail:PERS.neutral.fail}:(PERS[x.persona]||PERS.gangster);
 const aiMsg=(p,o)=>o.text||(o.err=='rate'?p.rate:o.err=='nokey'?NOKEY:p.fail);
-async function botReply(r,u){if(busy.has(r.id))return;busy.add(r.id);const P=PERS[db.users[u].persona]||PERS.gangster,tell=()=>r.members.forEach(x=>x!=BOT&&to(x,{t:'typing',room:r.id,u:BOT})),iv=setInterval(tell,1500);tell();
-  let o;try{if(!aiAllowed(u))o={err:'rate'};else o=await gemini(P.sys+(r.type=='group'?' Du er med i en gruppechat og er blevet nævnt af '+u+'.':' Du chatter privat med '+u+'.')+' Skriv kun din næste besked, uden dit navn foran.',r.messages.slice(-20).map(m=>`${m.u}: ${m.text||(m.poll?'[afstemning]':m.file?'[fil]':'')}`).join('\n')+'\n'+BOT+':')}finally{clearInterval(iv);busy.delete(r.id)}
-  if(!db.rooms[r.id])return;const ts=Date.now(),msg={id:id(),u:BOT,text:aiMsg(P,o),ts,exp:ts+864e5,file:null,r:{},rp:null};r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
+async function botReply(r,u){if(busy.has(r.id))return;busy.add(r.id);const P=persOf(db.users[u]),tell=()=>r.members.forEach(x=>x!=BOT&&to(x,{t:'typing',room:r.id,u:BOT})),iv=setInterval(tell,1500);tell();
+  let o;try{if(!aiAllowed(u))o={err:'rate',msg:'Lokal grænse: for mange Gemini-beskeder (maks. 5 pr. minut pr. bruger og '+AIRPM+' pr. minut i alt)'};else o=await gemini(P.sys+(r.type=='group'?' Du er med i en gruppechat og er blevet nævnt af '+u+'.':' Du chatter privat med '+u+'.')+' Skriv kun din næste besked, uden dit navn foran.',r.messages.slice(-20).map(m=>`${m.u}: ${m.text||(m.poll?'[afstemning]':m.file?'[fil]':'')}`).join('\n')+'\n'+BOT+':')}finally{clearInterval(iv);busy.delete(r.id)}
+  if(o.err)to(u,{t:'ailog',kind:o.err,msg:o.msg||'',model:AIM});if(!db.rooms[r.id])return;const ts=Date.now(),msg={id:id(),u:BOT,text:aiMsg(P,o),ts,exp:ts+864e5,file:null,r:{},rp:null};r.messages.push(msg);save();cast(r,{t:'msg',room:r.id,m:msg})}
 function botTrig(r,u,text,rr){if(text&&u!=BOT&&r.members.includes(BOT)&&(r.type=='dm'||/@gemini\b/i.test(text)||(rr&&rr.u==BOT)))botReply(r,u)}
 function ensureBotUser(){const x=db.users[BOT]=Object.assign(db.users[BOT]||{friends:[],incoming:[],score:0,created:Date.now(),salt:'',h:''},{bot:1,emoji:'✨',color:'#4285f4',deco:'galaxy',img:'',banner:'',plate:'',bio:'Jeg er Gemini, din AI-ven. Skriv til mig her, eller nævn @gemini i en gruppe. Du kan ændre min personlighed under Indstillinger → AI.'});x.profiles=[{id:'bot',name:'Gemini',...pfOf(x)}];x.active='bot';save()}
 function ensureBot(u){const me=db.users[u],b=db.users[BOT];if(!b||!me||u==BOT||me.friends.includes(BOT))return;me.friends.push(BOT);if(!b.friends.includes(u))b.friends.push(u);
@@ -83,7 +84,7 @@ const cast=(r,o)=>r.members.forEach(m=>to(m,o));
 function push(u){const me=db.users[u];if(!me)return;ensureProf(me);ensureBot(u);
   const rooms=roomsOf(u),people={};
   new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
-  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[],persona:me.persona||'gangster'},friends:me.friends,incoming:me.incoming,rooms:rooms.map(r=>r.streak?{...r,sk:streakOf(r)}:r),people,ice:ICE,ai:{list:PERSL,on:!!AIK},calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[],persona:me.persona||'gangster',cp:me.cp||'',cr:me.cr||''},friends:me.friends,incoming:me.incoming,rooms:rooms.map(r=>r.streak?{...r,sk:streakOf(r)}:r),people,ice:ICE,ai:{list:PERSL,on:!!AIK},calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
 const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
 function accept(u,n){const a=db.users[u],b=db.users[n];
   a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
@@ -149,7 +150,7 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
     g.keep=!g.keep;save();cast(r,{t:'upd',room:r.id,id:g.id,text:g.text,edited:g.edited,r:g.r,poll:g.poll,keep:g.keep})}
   else if(m.t=='pin'){if(!db.rooms[m.room]||!db.rooms[m.room].members.includes(u))return;const p=me.pins||[];me.pins=p.includes(m.room)?p.filter(x=>x!=m.room):[...p,m.room];save();push(u)}
   else if(m.t=='order'){const mine=new Set(roomsOf(u).map(r=>r.id));me.order=(Array.isArray(m.ids)?m.ids:[]).filter(x=>mine.has(x)).slice(0,200);save();push(u)}
-  else if(m.t=='persona'){if(PERS[m.id]){me.persona=m.id;save();push(u)}}
+  else if(m.t=='persona'){if(PERS[m.id]||m.id=='custom'){me.persona=m.id;if(m.id=='custom'){me.cp=String(m.text||'').trim().slice(0,500);me.cr=String(m.rate||'').trim().slice(0,200);if(!me.cp)me.persona='gangster'}save();push(u)}}
   else if(m.t=='profnew'){ensureProf(me);if(me.profiles.length>=8)return note('Maks. 8 profiler');syncProf(me);
     const p={id:id(),name:String(m.name||'').trim().slice(0,20)||'Profil',...pfOf(me)};me.profiles.push(p);me.active=p.id;save();pushAll(u)}
   else if(m.t=='profswitch'){ensureProf(me);const p=me.profiles.find(q=>q.id==m.id);if(!p)return;syncProf(me);Object.assign(me,pfOf(p));me.active=p.id;save();pushAll(u)}
