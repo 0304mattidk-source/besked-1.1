@@ -19,7 +19,7 @@ async function flush(){if(!dirty)return;dirty=0;const s=JSON.stringify(db);
 const save=()=>{dirty=1;if(!tm)tm=setTimeout(()=>{tm=null;flush()},1500)};
 for(const sg of['SIGTERM','SIGINT'])process.on(sg,async()=>{await flush();process.exit(0)});
 const id=()=>cr.randomBytes(6).toString('hex'),hash=(p,s)=>cr.scryptSync(p,s,32).toString('hex');
-const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
+const conns=new Map(),DECOS=['none','gold','rainbow','neon','fire','ice','toxic','sakura','galaxy','santa','halo','horns'],REACTS=['👍','❤️','😂','😮','😢','🔥'];
 const sha=t=>cr.createHash('sha256').update(String(t)).digest('hex');
 const vurl=i=>{i=String(i||'').trim();return /^https:\/\/[^\s"'<>]{4,480}$/.test(i)?i:''};
 const ADMINS=(process.env.ADMINS||'').split(',').map(x=>x.trim()).filter(Boolean);
@@ -70,10 +70,15 @@ function ensureBotUser(){const x=db.users[BOT]=Object.assign(db.users[BOT]||{fri
 function ensureBot(u){const me=db.users[u],b=db.users[BOT];if(!b||!me||u==BOT||me.friends.includes(BOT))return;me.friends.push(BOT);if(!b.friends.includes(u))b.friends.push(u);
   if(!Object.values(db.rooms).some(r=>r.type=='dm'&&r.members.includes(u)&&r.members.includes(BOT))){const r={id:id(),type:'dm',members:[u,BOT],messages:[]};db.rooms[r.id]=r;me.pins=[...(me.pins||[]),r.id]}save()}
 const dayStr=t=>new Date(t).toLocaleDateString('sv-SE',{timeZone:'Europe/Copenhagen'}),dayNum=s=>Math.floor(Date.parse(s+'T00:00:00Z')/864e5);
-function streakOf(r){const s=r.streak;if(!s)return{n:0};const D=dayNum(dayStr(Date.now())),alive=s.last>0&&s.last>=D-1;return{n:alive?s.n:0,warn:alive&&s.last==D-1,sent:Object.keys(s.days||{}).filter(k=>s.days[k]==D)}}
+const wkd=D=>{const x=(D+4)%7;return x==0||x==6},pwd=D=>{let x=D-1;while(wkd(x))x--;return x};
+function streakOf(r){const s=r.streak;if(!s)return{n:0};const D=dayNum(dayStr(Date.now())),alive=s.last>0&&s.last>=pwd(D);return{n:alive?s.n:0,warn:alive&&!wkd(D)&&s.last==pwd(D),wk:wkd(D),sent:Object.keys(s.days||{}).filter(k=>s.days[k]==D)}}
 function streakUp(r,u,ts,file){if(!file||!/^data:image\//.test(file.data)||r.type!='dm'||r.members.length!=2||r.members.includes(BOT))return;
-  const D=dayNum(dayStr(ts)),s=r.streak=r.streak||{n:0,last:0,days:{}},o=r.members.find(x=>x!=u);s.days[u]=D;
-  if(s.days[o]==D&&s.last!=D){s.n=s.last==D-1?s.n+1:1;s.last=D;r.members.forEach(x=>{const y=db.users[x];if(y)y.score=(y.score||0)+5})}cast(r,{t:'streak',room:r.id,sk:streakOf(r)})}
+  const D=dayNum(dayStr(ts));if(wkd(D))return;const s=r.streak=r.streak||{n:0,last:0,days:{}},o=r.members.find(x=>x!=u);s.days[u]=D;
+  if(s.days[o]==D&&s.last!=D){s.n=s.last==pwd(D)?s.n+1:1;s.last=D;r.members.forEach(x=>{const y=db.users[x];if(y)y.score=(y.score||0)+5})}cast(r,{t:'streak',room:r.id,sk:streakOf(r)})}
+function delUser(n){const x=db.users[n];if(!x||n==BOT)return;const aff=new Set(x.friends);
+  for(const o of Object.values(db.users)){o.friends=o.friends.filter(y=>y!=n);o.incoming=o.incoming.filter(y=>y!=n)}
+  for(const r of Object.values(db.rooms)){if(!r.members.includes(n))continue;r.members.forEach(y=>aff.add(y));if(r.type=='dm'||r.members.length<=1)delete db.rooms[r.id];else r.members=r.members.filter(y=>y!=n)}
+  [...(conns.get(n)||[])].forEach(w=>send(w,{t:'acctdel'}));kick(n);delete db.users[n];save();aff.forEach(y=>y!=n&&push(y))}
 const kick=n=>(conns.get(n)||[]).forEach(w=>w.close());
 const bad=new Map(),ip=q=>String(q.headers['x-forwarded-for']||q.socket.remoteAddress||'').split(',')[0].trim();
 const blocked=w=>{const b=bad.get(w.ip);return b&&b.n>=8&&Date.now()-b.t<3e5};
@@ -86,7 +91,7 @@ const cast=(r,o)=>r.members.forEach(m=>to(m,o));
 function push(u){const me=db.users[u];if(!me)return;ensureProf(me);ensureBot(u);
   const rooms=roomsOf(u),people={};
   new Set([u,...me.friends,...me.incoming,...rooms.flatMap(r=>r.members)]).forEach(n=>db.users[n]&&(people[n]=pub(n)));
-  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[],persona:me.persona||'gangster',cp:me.cp||'',cr:me.cr||''},friends:me.friends,incoming:me.incoming,rooms:rooms.map(r=>r.streak?{...r,sk:streakOf(r)}:r),people,ice:ICE,ai:{list:PERSL,on:!!AIK},calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
+  to(u,{t:'state',now:Date.now(),me:{name:u,...pub(u),ttl:me.ttl,admin:ADMINS.includes(u),profiles:me.profiles,active:me.active,pins:me.pins||[],order:me.order||[],persona:me.persona||'gangster',cp:me.cp||'',cr:me.cr||'',nicks:me.nicks||{}},friends:me.friends,incoming:me.incoming,rooms:rooms.map(r=>r.streak?{...r,sk:streakOf(r)}:r),people,ice:ICE,ai:{list:PERSL,on:!!AIK},calls:Object.fromEntries(rooms.filter(r=>calls.has(r.id)).map(r=>[r.id,[...calls.get(r.id)]]))})}
 const pushAll=u=>new Set([u,...db.users[u].friends,...roomsOf(u).flatMap(r=>r.members)]).forEach(push);
 function accept(u,n){const a=db.users[u],b=db.users[n];
   a.incoming=a.incoming.filter(x=>x!=n);b.incoming=b.incoming.filter(x=>x!=u);
@@ -153,6 +158,12 @@ function handle(u,m,ws){const me=db.users[u],note=e=>to(u,{t:'note',e});
   else if(m.t=='pin'){if(!db.rooms[m.room]||!db.rooms[m.room].members.includes(u))return;const p=me.pins||[];me.pins=p.includes(m.room)?p.filter(x=>x!=m.room):[...p,m.room];save();push(u)}
   else if(m.t=='order'){const mine=new Set(roomsOf(u).map(r=>r.id));me.order=(Array.isArray(m.ids)?m.ids:[]).filter(x=>mine.has(x)).slice(0,200);save();push(u)}
   else if(m.t=='persona'){if(PERS[m.id]||m.id=='custom'){me.persona=m.id;if(m.id=='custom'){me.cp=String(m.text||'').trim().slice(0,500);me.cr=String(m.rate||'').trim().slice(0,200);if(!me.cp)me.persona='gangster'}save();push(u)}}
+  else if(m.t=='nick'){if(!db.users[m.name]||m.name==u)return;me.nicks=me.nicks||{};const k=String(m.nick||'').trim().slice(0,24);if(k)me.nicks[m.name]=k;else delete me.nicks[m.name];save();push(u)}
+  else if(m.t=='chpw'||m.t=='delacct'){if(blocked(ws))return note('For mange forsøg. Vent 5 minutter.');
+    if(me.h!==hash(String(m.t=='chpw'?m.old:m.pw||''),me.salt)){const b=bad.get(ws.ip)||{n:0};b.n++;b.t=Date.now();bad.set(ws.ip,b);return note('Forkert adgangskode')}bad.delete(ws.ip);
+    if(m.t=='delacct')return delUser(u);
+    const np=String(m.new||'');if(np.length<4)return note('Den nye adgangskode skal være mindst 4 tegn');
+    const s=id(),keep=m.keep?sha(m.keep):'';me.salt=s;me.h=hash(np,s);me.tokens=(me.tokens||[]).filter(x=>x==keep);save();send(ws,{t:'pwok'})}
   else if(m.t=='profnew'){ensureProf(me);if(me.profiles.length>=8)return note('Maks. 8 profiler');syncProf(me);
     const p={id:id(),name:String(m.name||'').trim().slice(0,20)||'Profil',...pfOf(me)};me.profiles.push(p);me.active=p.id;save();pushAll(u)}
   else if(m.t=='profswitch'){ensureProf(me);const p=me.profiles.find(q=>q.id==m.id);if(!p)return;syncProf(me);Object.assign(me,pfOf(p));me.active=p.id;save();pushAll(u)}

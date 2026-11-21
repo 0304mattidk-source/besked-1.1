@@ -1,5 +1,23 @@
-/* Opdateringslog – læg en ny post øverst ved hver opdatering (v skal være unik) */
+/* Opdateringslog – læg en ny post øverst ved hver opdatering (v skal være unik). "xmas":true viser jule-popup én gang */
 const CHANGELOG=[
+ {
+  "v": "1.9",
+  "t": "Opdatering 1.9 – Jul og nye indstillinger",
+  "d": "20. november 2026",
+  "xmas": true,
+  "items": [
+   "🎄 Nyt jule-tema med snefnug-baggrund og nissehue",
+   "⚙️ Indstillinger har nu kategorier i venstre side, som på Discord",
+   "✏️ Rediger din profil direkte i forhåndsvisningen: klik på banner, billede, beskrivelse eller navneskilt",
+   "🎅 Nye avatar-dekorationer: nissehue, engle-halo og djævle-horn",
+   "🖼️ Chat-baggrunde, som kun du kan se: vinter (animeret), vinter-maskot, aurora eller din egen",
+   "🏷️ Kaldenavne, som kun du kan se",
+   "🔥 Streaks holder pause i weekenden",
+   "🔐 Skift adgangskode og slet din profil (kræver din kode)",
+   "🎙️ Farvet ramme om dem, der taler i et opkald",
+   "🏆 Ranglisten viser ikke længere navneskilte"
+  ]
+ },
  {
   "v": "1.8",
   "t": "Opdatering 1.8 – Maskotten og lyd",
